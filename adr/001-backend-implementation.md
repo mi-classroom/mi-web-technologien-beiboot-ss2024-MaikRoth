@@ -1,4 +1,4 @@
-# ADR: Implementing Video Processing Backend for Long-Exposure-Image
+# Implementing Video Processing Backend for Long-Exposure-Image
 
 - **Status**: Accepted
 - **Deciders**: [Maik Roth](https://github.com/MaikRoth)

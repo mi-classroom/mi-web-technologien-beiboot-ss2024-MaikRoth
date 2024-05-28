@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Frames</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .frame-container {
+            flex: 0 0 auto;
+            margin: 10px;
+        }
+        .frame-container img {
+            max-width: 150px;
+            max-height: 100px;
+        }
+        .scrolling-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .range-slider {
+            width: 100%;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Select Frames to Include in Long Exposure Image</h1>
+        <form id="framesForm" action="/process_frames" method="post">
+            <div class="scrolling-wrapper" id="scrollingWrapper">
+                {% for frame in frames %}
+                    <div class="frame-container" id="frame-container-{{ loop.index0 }}">
+                        <img src="{{ frame }}" class="img-thumbnail">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input frame-checkbox" name="frames" value="{{ frame }}" id="checkbox-{{ loop.index0 }}" checked>
+                            <label class="form-check-label" for="checkbox-{{ loop.index0 }}">Select</label>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="range-slider">
+                <label for="rangeStart">Select Range:</label>
+                <input type="range" id="rangeStart" name="rangeStart" min="0" max="{{ frames|length - 1 }}" value="0" oninput="updateRange()">
+                <input type="range" id="rangeEnd" name="rangeEnd" min="0" max="{{ frames|length - 1 }}" value="{{ frames|length - 1 }}" oninput="updateRange()">
+            </div>
+            <div class="selected-range">
+                <span id="rangeValueStart">0</span> - <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
+            </div>
+            <input type="hidden" name="selectedFrames" id="selectedFrames">
+            <button type="submit" class="btn btn-primary mt-4">Create Long Exposure Image</button>
+        </form>
+    </div>
+
+    <script>
+        function updateRange() {
+            const rangeStart = document.getElementById('rangeStart');
+            const rangeEnd = document.getElementById('rangeEnd');
+            const startValue = parseInt(rangeStart.value);
+            const endValue = parseInt(rangeEnd.value);
+
+            document.getElementById('rangeValueStart').innerText = startValue;
+            document.getElementById('rangeValueEnd').innerText = endValue;
+
+            const checkboxes = document.getElementsByClassName('frame-checkbox');
+            for (let i = 0; i < checkboxes.length; i++) {
+                const frameContainer = document.getElementById('frame-container-' + i);
+                if (i >= startValue && i <= endValue) {
+                    checkboxes[i].checked = true;
+                    frameContainer.style.display = 'block';
+                } else {
+                    checkboxes[i].checked = false;
+                    frameContainer.style.display = 'none';
+                }
+            }
+            updateSelectedFrames();
+        }
+
+        function updateSelectedFrames() {
+            const selectedFrames = [];
+            const checkboxes = document.querySelectorAll('.frame-checkbox:checked');
+            checkboxes.forEach(checkbox => {
+                selectedFrames.push(checkbox.value);
+            });
+            document.getElementById('selectedFrames').value = JSON.stringify(selectedFrames);
+        }
+
+        document.getElementById('framesForm').onsubmit = function() {
+            updateSelectedFrames();
+        };
+
+        // Initialize the selected frames on load
+        window.onload = function() {
+            updateRange();
+        };
+    </script>
+</body>
+</html>

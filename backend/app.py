@@ -12,7 +12,6 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['FRAMES_FOLDER'] = 'static/frames'
 app.config['OUTPUT_FOLDER'] = 'outputs'
-app.config['SECRET_KEY'] = 'supersecretkey'
 
 # Create necessary directories if they do not exist
 for folder in [app.config['UPLOAD_FOLDER'], app.config['FRAMES_FOLDER'], app.config['OUTPUT_FOLDER']]:

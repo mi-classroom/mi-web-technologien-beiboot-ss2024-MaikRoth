@@ -40,8 +40,12 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+
+# Ignore the virtual environment
 /venv
+
+# Ignore the static folder and output folder
 /ExposureClip2Image-App/outputs
-/ExposureClip2Image-App/uploads
 /ExposureClip2Image-App/static/uploads/**
 /ExposureClip2Image-App/static/frames/**

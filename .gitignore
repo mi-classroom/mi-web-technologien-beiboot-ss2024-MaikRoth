@@ -40,3 +40,8 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+/venv
+/ExposureClip2Image-App/outputs
+/ExposureClip2Image-App/uploads
+/ExposureClip2Image-App/static/uploads/**
+/ExposureClip2Image-App/static/frames/**

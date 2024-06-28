@@ -56,14 +56,14 @@
                 <span id="rangeValueStart">0</span> - <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
             </div>
             <input type="hidden" name="selectedFrames" id="selectedFrames">
-            <input type="hidden" name="highlightedFrame" id="highlightedFrame">
+            <input type="hidden" name="highlightedFrames" id="highlightedFrames">
             <button type="submit" class="btn btn-primary mt-4">Create Long Exposure Image</button>
         </form>
-        <button type="button" class="btn btn-secondary mt-4" onclick="unhighlightFrame()">Unhighlight</button>
+        <button type="button" class="btn btn-secondary mt-4" onclick="unhighlightFrames()">Unhighlight All</button>
     </div>
 
     <script>
-        let highlightedFrameIndex = null;
+        let highlightedFrames = [];
 
         function updateRange() {
             const rangeStart = document.getElementById('rangeStart');
@@ -98,20 +98,24 @@
         }
 
         function highlightFrame(index) {
-            if (highlightedFrameIndex !== null) {
-                document.getElementById('img-' + highlightedFrameIndex).classList.remove('highlighted');
+            const frameValue = document.getElementById('checkbox-' + index).value;
+            if (highlightedFrames.includes(frameValue)) {
+                highlightedFrames = highlightedFrames.filter(item => item !== frameValue);
+                document.getElementById('img-' + index).classList.remove('highlighted');
+            } else {
+                highlightedFrames.push(frameValue);
+                document.getElementById('img-' + index).classList.add('highlighted');
             }
-            highlightedFrameIndex = index;
-            document.getElementById('img-' + highlightedFrameIndex).classList.add('highlighted');
-            document.getElementById('highlightedFrame').value = document.getElementById('checkbox-' + highlightedFrameIndex).value;
+            document.getElementById('highlightedFrames').value = JSON.stringify(highlightedFrames);
         }
 
-        function unhighlightFrame() {
-            if (highlightedFrameIndex !== null) {
-                document.getElementById('img-' + highlightedFrameIndex).classList.remove('highlighted');
-                highlightedFrameIndex = null;
-                document.getElementById('highlightedFrame').value = '';
-            }
+        function unhighlightFrames() {
+            highlightedFrames = [];
+            const images = document.querySelectorAll('.img-thumbnail');
+            images.forEach(img => {
+                img.classList.remove('highlighted');
+            });
+            document.getElementById('highlightedFrames').value = '';
         }
 
         document.querySelectorAll('.highlight-btn').forEach(button => {
@@ -123,6 +127,7 @@
 
         document.getElementById('framesForm').onsubmit = function() {
             updateSelectedFrames();
+            document.getElementById('highlightedFrames').value = JSON.stringify(highlightedFrames);
         };
 
         window.onload = function() {

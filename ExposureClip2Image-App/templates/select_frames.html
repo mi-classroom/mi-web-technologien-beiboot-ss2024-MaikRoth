@@ -26,6 +26,9 @@
             width: 100%;
             margin: 15px 0;
         }
+        .highlighted {
+            border: 2px solid red;
+        }
     </style>
 </head>
 <body>
@@ -35,11 +38,12 @@
             <div class="scrolling-wrapper" id="scrollingWrapper">
                 {% for frame in frames %}
                     <div class="frame-container" id="frame-container-{{ loop.index0 }}">
-                        <img src="{{ frame }}" class="img-thumbnail">
+                        <img src="{{ frame }}" class="img-thumbnail" id="img-{{ loop.index0 }}">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input frame-checkbox" name="frames" value="{{ frame }}" id="checkbox-{{ loop.index0 }}" checked>
                             <label class="form-check-label" for="checkbox-{{ loop.index0 }}">Select</label>
                         </div>
+                        <button type="button" class="btn btn-warning btn-sm mt-2 highlight-btn" data-index="{{ loop.index0 }}">Highlight</button>
                     </div>
                 {% endfor %}
             </div>
@@ -52,11 +56,15 @@
                 <span id="rangeValueStart">0</span> - <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
             </div>
             <input type="hidden" name="selectedFrames" id="selectedFrames">
+            <input type="hidden" name="highlightedFrame" id="highlightedFrame">
             <button type="submit" class="btn btn-primary mt-4">Create Long Exposure Image</button>
         </form>
+        <button type="button" class="btn btn-secondary mt-4" onclick="unhighlightFrame()">Unhighlight</button>
     </div>
 
     <script>
+        let highlightedFrameIndex = null;
+
         function updateRange() {
             const rangeStart = document.getElementById('rangeStart');
             const rangeEnd = document.getElementById('rangeEnd');
@@ -89,11 +97,34 @@
             document.getElementById('selectedFrames').value = JSON.stringify(selectedFrames);
         }
 
+        function highlightFrame(index) {
+            if (highlightedFrameIndex !== null) {
+                document.getElementById('img-' + highlightedFrameIndex).classList.remove('highlighted');
+            }
+            highlightedFrameIndex = index;
+            document.getElementById('img-' + highlightedFrameIndex).classList.add('highlighted');
+            document.getElementById('highlightedFrame').value = document.getElementById('checkbox-' + highlightedFrameIndex).value;
+        }
+
+        function unhighlightFrame() {
+            if (highlightedFrameIndex !== null) {
+                document.getElementById('img-' + highlightedFrameIndex).classList.remove('highlighted');
+                highlightedFrameIndex = null;
+                document.getElementById('highlightedFrame').value = '';
+            }
+        }
+
+        document.querySelectorAll('.highlight-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const index = this.getAttribute('data-index');
+                highlightFrame(index);
+            });
+        });
+
         document.getElementById('framesForm').onsubmit = function() {
             updateSelectedFrames();
         };
 
-        // Initialize the selected frames on load
         window.onload = function() {
             updateRange();
         };

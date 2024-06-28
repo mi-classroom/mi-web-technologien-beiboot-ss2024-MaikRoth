@@ -47,5 +47,4 @@ Thumbs.db
 
 # Ignore the static folder and output folder
 /ExposureClip2Image-App/outputs
-/ExposureClip2Image-App/static/uploads/**
-/ExposureClip2Image-App/static/frames/**
+/ExposureClip2Image-App/static

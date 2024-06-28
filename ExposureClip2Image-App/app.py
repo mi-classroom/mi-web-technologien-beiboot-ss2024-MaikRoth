@@ -1,5 +1,4 @@
 import json
-
 from flask import Flask, request, render_template, send_file, url_for, jsonify
 from werkzeug.utils import secure_filename
 import os
@@ -9,26 +8,27 @@ import glob
 import time
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['FRAMES_FOLDER'] = 'static/frames'
-app.config['OUTPUT_FOLDER'] = 'outputs'
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
+app.config['FRAMES_FOLDER'] = os.path.join(app.root_path, 'static/frames')
+app.config['OUTPUT_FOLDER'] = os.path.join(app.root_path, 'outputs')
 
-# Create necessary directories if they do not exist
 for folder in [app.config['UPLOAD_FOLDER'], app.config['FRAMES_FOLDER'], app.config['OUTPUT_FOLDER']]:
     if not os.path.exists(folder):
         os.makedirs(folder)
+        print(f"Created directory: {folder}")
 
 def clear_frames_directory():
     files = glob.glob(os.path.join(app.config['FRAMES_FOLDER'], '*'))
     for f in files:
         os.remove(f)
+    print(f"Cleared frames directory: {app.config['FRAMES_FOLDER']}")
 
 def extract_frames(video_path, start_time, end_time, fps):
     cap = cv2.VideoCapture(video_path)
     original_fps = cap.get(cv2.CAP_PROP_FPS)
     start_frame = int(start_time * original_fps)
     end_frame = int(end_time * original_fps)
-    frame_interval = max(1, int(original_fps / fps))  # Ensure frame_interval is at least 1
+    frame_interval = max(1, int(original_fps / fps))  
     current_frame = 0
 
     frame_paths = []
@@ -43,11 +43,13 @@ def extract_frames(video_path, start_time, end_time, fps):
             frame_paths.append(url_for('static', filename=f'frames/{frame_filename}', _external=True))
         current_frame += 1
     cap.release()
+    print(f"Extracted frames from {video_path}")
     return frame_paths
 
-def create_long_exposure_image(selected_frames):
+def create_long_exposure_image(selected_frames, highlighted_frame):
     exposure_image = None
     valid_frame_count = 0
+    exposure_factor = 1.5 
 
     for frame_url in selected_frames:
         frame_path = frame_url.replace(request.url_root, '').replace('/static/', 'static/')
@@ -59,7 +61,7 @@ def create_long_exposure_image(selected_frames):
         if frame is None:
             print(f"Error reading frame: {frame_full_path}")
             continue
-        frame = frame.astype(np.float32)
+        frame = frame.astype(np.float32) * exposure_factor
         if exposure_image is None:
             exposure_image = np.zeros_like(frame)
         exposure_image += frame
@@ -67,18 +69,56 @@ def create_long_exposure_image(selected_frames):
 
     if exposure_image is not None and valid_frame_count > 0:
         exposure_image /= valid_frame_count
-        exposure_image = np.uint8(exposure_image)
-        timestamp = int(time.time())  # Generate a unique timestamp
+
+        if highlighted_frame:
+            highlighted_path = highlighted_frame.replace(request.url_root, '').replace('/static/', 'static/')
+            highlighted_full_path = os.path.join(app.root_path, highlighted_path)
+            if os.path.exists(highlighted_full_path):
+                highlighted_img = cv2.imread(highlighted_full_path)
+                if highlighted_img is not None:
+                    highlighted_img = highlighted_img.astype(np.float32) * exposure_factor
+                    exposure_image = highlight_object(exposure_image, highlighted_img)
+
+        exposure_image = np.clip(exposure_image, 0, 255).astype(np.uint8)
+        timestamp = int(time.time())
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], f'long_exposure_{timestamp}.jpg')
+
+        output_dir = os.path.dirname(output_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            print(f"Created output directory: {output_dir}")
+
+        print(f"Saving long exposure image to: {output_path}")
+
         cv2.imwrite(output_path, exposure_image)
         return output_path
     else:
         raise ValueError("No valid frames to process.")
 
+def highlight_object(exposure_image, highlighted_img):
+    back_sub = cv2.createBackgroundSubtractorMOG2(history=1, varThreshold=50, detectShadows=False)
+    fg_mask = back_sub.apply(highlighted_img)
+
+    contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        mask = np.zeros_like(highlighted_img, dtype=np.uint8)
+        cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
+
+        mask = mask[:, :, 0]
+        mask = mask / 255.0
+
+        alpha = 0.25  
+        for c in range(3):  
+            exposure_image[:, :, c] = (1 - mask * alpha) * exposure_image[:, :, c] + mask * alpha * highlighted_img[:, :, c]
+
+    return np.clip(exposure_image, 0, 255)
+
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        clear_frames_directory()  # Clear frames directory before processing a new video
+        clear_frames_directory()  
 
         video = request.files['video']
         start_time = float(request.form['start_time'])
@@ -89,6 +129,8 @@ def upload_file():
         video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         video.save(video_path)
 
+        print(f"Uploaded video to {video_path}")
+
         frame_paths = extract_frames(video_path, start_time, end_time, fps)
         return render_template('select_frames.html', frames=frame_paths)
 
@@ -98,10 +140,11 @@ def upload_file():
 def process_frames():
     try:
         selected_frames_json = request.form.get('selectedFrames')
+        highlighted_frame = request.form.get('highlightedFrame')
         selected_frames = json.loads(selected_frames_json)
         if not selected_frames:
             return "No frames selected for processing.", 400
-        output_image_path = create_long_exposure_image(selected_frames)
+        output_image_path = create_long_exposure_image(selected_frames, highlighted_frame)
         return send_file(output_image_path, as_attachment=True)
     except Exception as e:
         print(f"Error: {e}")

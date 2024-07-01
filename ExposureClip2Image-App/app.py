@@ -1,21 +1,25 @@
 import json
-from flask import Flask, request, render_template, send_file, url_for, jsonify
+from flask import Flask, request, render_template, send_file, url_for
 from werkzeug.utils import secure_filename
 import os
 import cv2
 import numpy as np
 import glob
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
 app.config['FRAMES_FOLDER'] = os.path.join(app.root_path, 'static/frames')
 app.config['OUTPUT_FOLDER'] = os.path.join(app.root_path, 'outputs')
+app.config['SERVER_NAME'] = '127.0.0.1:5000' 
 
 for folder in [app.config['UPLOAD_FOLDER'], app.config['FRAMES_FOLDER'], app.config['OUTPUT_FOLDER']]:
     if not os.path.exists(folder):
         os.makedirs(folder)
         print(f"Created directory: {folder}")
+
+executor = ThreadPoolExecutor(max_workers=4)
 
 def clear_frames_directory():
     files = glob.glob(os.path.join(app.config['FRAMES_FOLDER'], '*'))
@@ -23,7 +27,7 @@ def clear_frames_directory():
         os.remove(f)
     print(f"Cleared frames directory: {app.config['FRAMES_FOLDER']}")
 
-def extract_frames(video_path, start_time, end_time, fps):
+def extract_frames(video_path, start_time, end_time, fps, root_url):
     cap = cv2.VideoCapture(video_path)
     original_fps = cap.get(cv2.CAP_PROP_FPS)
     start_frame = int(start_time * original_fps)
@@ -39,17 +43,18 @@ def extract_frames(video_path, start_time, end_time, fps):
         if start_frame <= current_frame <= end_frame and current_frame % frame_interval == 0:
             frame_filename = f"frame_{current_frame}.jpg"
             frame_path = os.path.join(app.config['FRAMES_FOLDER'], frame_filename)
-            cv2.imwrite(frame_path, frame)
-            frame_paths.append(url_for('static', filename=f'frames/{frame_filename}', _external=True))
+            cv2.imwrite(frame_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 85])  
+            frame_url = f"{root_url}static/frames/{frame_filename}"
+            frame_paths.append(frame_url)
         current_frame += 1
     cap.release()
     print(f"Extracted frames from {video_path}")
     return frame_paths
 
-def create_long_exposure_image(selected_frames, highlighted_frame):
+def create_long_exposure_image(selected_frames, highlighted_frames):
     exposure_image = None
     valid_frame_count = 0
-    exposure_factor = 1.5 
+    exposure_factor = 1.5  
 
     for frame_url in selected_frames:
         frame_path = frame_url.replace(request.url_root, '').replace('/static/', 'static/')
@@ -57,39 +62,29 @@ def create_long_exposure_image(selected_frames, highlighted_frame):
         if not os.path.exists(frame_full_path):
             print(f"Frame file does not exist: {frame_full_path}")
             continue
-        frame = cv2.imread(frame_full_path)
-        if frame is None:
-            print(f"Error reading frame: {frame_full_path}")
-            continue
-        frame = frame.astype(np.float32) * exposure_factor
+        frame = cv2.imread(frame_full_path).astype(np.float32)
         if exposure_image is None:
             exposure_image = np.zeros_like(frame)
-        exposure_image += frame
+        exposure_image += frame * exposure_factor
         valid_frame_count += 1
 
     if exposure_image is not None and valid_frame_count > 0:
         exposure_image /= valid_frame_count
 
-        if highlighted_frame:
-            highlighted_path = highlighted_frame.replace(request.url_root, '').replace('/static/', 'static/')
-            highlighted_full_path = os.path.join(app.root_path, highlighted_path)
-            if os.path.exists(highlighted_full_path):
-                highlighted_img = cv2.imread(highlighted_full_path)
-                if highlighted_img is not None:
-                    highlighted_img = highlighted_img.astype(np.float32) * exposure_factor
+        if highlighted_frames:
+            for highlighted_frame in highlighted_frames:
+                highlighted_path = highlighted_frame.replace(request.url_root, '').replace('/static/', 'static/')
+                highlighted_full_path = os.path.join(app.root_path, highlighted_path)
+                if os.path.exists(highlighted_full_path):
+                    highlighted_img = cv2.imread(highlighted_full_path).astype(np.float32)
                     exposure_image = highlight_object(exposure_image, highlighted_img)
 
         exposure_image = np.clip(exposure_image, 0, 255).astype(np.uint8)
         timestamp = int(time.time())
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], f'long_exposure_{timestamp}.jpg')
 
-        output_dir = os.path.dirname(output_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-            print(f"Created output directory: {output_dir}")
-
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         print(f"Saving long exposure image to: {output_path}")
-
         cv2.imwrite(output_path, exposure_image)
         return output_path
     else:
@@ -98,28 +93,22 @@ def create_long_exposure_image(selected_frames, highlighted_frame):
 def highlight_object(exposure_image, highlighted_img):
     back_sub = cv2.createBackgroundSubtractorMOG2(history=1, varThreshold=50, detectShadows=False)
     fg_mask = back_sub.apply(highlighted_img)
-
     contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
         mask = np.zeros_like(highlighted_img, dtype=np.uint8)
         cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
+        mask = mask[:, :, 0] / 255.0
 
-        mask = mask[:, :, 0]
-        mask = mask / 255.0
-
-        alpha = 0.25  
-        for c in range(3):  
+        alpha = 0.3
+        for c in range(3):
             exposure_image[:, :, c] = (1 - mask * alpha) * exposure_image[:, :, c] + mask * alpha * highlighted_img[:, :, c]
-
     return np.clip(exposure_image, 0, 255)
-
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
         clear_frames_directory()  
-
         video = request.files['video']
         start_time = float(request.form['start_time'])
         end_time = float(request.form['end_time'])
@@ -131,7 +120,10 @@ def upload_file():
 
         print(f"Uploaded video to {video_path}")
 
-        frame_paths = extract_frames(video_path, start_time, end_time, fps)
+        root_url = request.url_root
+        future = executor.submit(extract_frames, video_path, start_time, end_time, fps, root_url)
+        frame_paths = future.result()
+
         return render_template('select_frames.html', frames=frame_paths)
 
     return render_template('upload.html')
@@ -140,12 +132,22 @@ def upload_file():
 def process_frames():
     try:
         selected_frames_json = request.form.get('selectedFrames')
-        highlighted_frame = request.form.get('highlightedFrame')
+        highlighted_frames_json = request.form.get('highlightedFrames')
+
+        if not selected_frames_json:
+            return "No frames selected for processing.", 400
+
         selected_frames = json.loads(selected_frames_json)
+        highlighted_frames = json.loads(highlighted_frames_json) if highlighted_frames_json else []
+
         if not selected_frames:
             return "No frames selected for processing.", 400
-        output_image_path = create_long_exposure_image(selected_frames, highlighted_frame)
+        
+        output_image_path = create_long_exposure_image(selected_frames, highlighted_frames)
         return send_file(output_image_path, as_attachment=True)
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        return f"An error occurred during processing: {e}. Please check the server logs for more details.", 500
     except Exception as e:
         print(f"Error: {e}")
         return f"An error occurred during processing: {e}. Please check the server logs for more details.", 500

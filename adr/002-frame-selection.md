@@ -1,4 +1,4 @@
-# Excluding Irrelevant Frames or Passages in Final Montage
+# Excluding Irrelevant Frames or Passages in Final Long-Exposure-Image
 
 - **Status**: Accepted
 - **Deciders**: [Maik Roth](https://github.com/MaikRoth)

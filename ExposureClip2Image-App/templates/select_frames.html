@@ -3,67 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Frames</title>
+    <title>Frame Selection for Long Exposure Image</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .frame-container {
-            flex: 0 0 auto;
-            margin: 10px;
+        .container-flex {
+            display: flex;
+            flex-direction: row;
+            transition: all 0.3s ease;
         }
-        .frame-container img {
-            max-width: 150px;
-            max-height: 100px;
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header {
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 0;
+        }
+        .frames-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 10px;
+            max-width: 52%;
+        }
+        .highlighted-section {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            max-width: 48%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
         }
         .scrolling-wrapper {
             display: flex;
             flex-wrap: wrap;
             max-height: 400px;
             overflow-y: auto;
+            overflow-x: hidden;
             border: 1px solid #ccc;
             padding: 10px;
+            width: 100%;
+        }
+        .highlighted-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: 100%;
+        }
+        .frame-container {
+            flex: 0 0 auto;
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .frame-container img {
+            max-width: 150px;
+            max-height: 100px;
+        }
+        .highlighted {
+            border: 2px solid red;
         }
         .range-slider {
             width: 100%;
             margin: 15px 0;
         }
-        .highlighted {
-            border: 2px solid red;
+        .form-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 40px;
         }
     </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Select Frames to Include in Long Exposure Image</h1>
+        <div class="header-section">
+            <div class="header">Select Frames</div>
+            <div class="header">Highlighted Frames</div>
+        </div>
         <form id="framesForm" action="/process_frames" method="post">
-            <div class="scrolling-wrapper" id="scrollingWrapper">
-                {% for frame in frames %}
-                    <div class="frame-container" id="frame-container-{{ loop.index0 }}">
-                        <img src="{{ frame }}" class="img-thumbnail" id="img-{{ loop.index0 }}">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input frame-checkbox" name="frames" value="{{ frame }}" id="checkbox-{{ loop.index0 }}" checked>
-                            <label class="form-check-label" for="checkbox-{{ loop.index0 }}">Select</label>
-                        </div>
-                        <button type="button" class="btn btn-warning btn-sm mt-2 highlight-btn" data-index="{{ loop.index0 }}">Highlight</button>
+            <div class="container-flex">
+                <div class="frames-section">
+                    <div class="scrolling-wrapper" id="scrollingWrapper">
+                        {% for frame in frames %}
+                            <div class="frame-container" id="frame-container-{{ loop.index0 }}">
+                                <img data-src="{{ frame }}" class="img-thumbnail lazy-load" id="img-{{ loop.index0 }}">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input frame-checkbox" name="frames" value="{{ frame }}" id="checkbox-{{ loop.index0 }}" checked>
+                                    <label class="form-check-label" for="checkbox-{{ loop.index0 }}">Select</label>
+                                </div>
+                                <button type="button" class="btn btn-warning btn-sm mt-2 highlight-btn" data-index="{{ loop.index0 }}">Highlight</button>
+                            </div>
+                        {% endfor %}
                     </div>
-                {% endfor %}
-            </div>
-            <div class="range-slider">
-                <label for="rangeStart">Select Range:</label>
-                <input type="range" id="rangeStart" name="rangeStart" min="0" max="{{ frames|length - 1 }}" value="0" oninput="updateRange()">
-                <input type="range" id="rangeEnd" name="rangeEnd" min="0" max="{{ frames|length - 1 }}" value="{{ frames|length - 1 }}" oninput="updateRange()">
-            </div>
-            <div class="selected-range">
-                <span id="rangeValueStart">0</span> - <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
+                    <div class="range-slider">
+                        <label for="rangeStart">Select Range:</label>
+                        <input type="range" id="rangeStart" name="rangeStart" min="0" max="{{ frames|length - 1 }}" value="0" oninput="updateRange()">
+                        <input type="range" id="rangeEnd" name="rangeEnd" min="0" max="{{ frames|length - 1 }}" value="{{ frames|length - 1 }}" oninput="updateRange()">
+                    </div>
+                    <div class="selected-range">
+                        <span id="rangeValueStart">0</span> - <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
+                    </div>
+                </div>
+                <div class="highlighted-section" id="highlightedSection">
+                    <div class="highlighted-wrapper" id="highlightedWrapper"></div>
+                    <button type="button" class="btn btn-secondary mt-4" onclick="unhighlightFrames()">Unhighlight All</button>
+                </div>
             </div>
             <input type="hidden" name="selectedFrames" id="selectedFrames">
             <input type="hidden" name="highlightedFrames" id="highlightedFrames">
-            <button type="submit" class="btn btn-primary mt-4">Create Long Exposure Image</button>
+            <div class="form-buttons">
+                <button type="submit" class="btn btn-primary mt-4">Create Long Exposure Image</button>
+            </div>
         </form>
-        <button type="button" class="btn btn-secondary mt-4" onclick="unhighlightFrames()">Unhighlight All</button>
     </div>
 
     <script>
         let highlightedFrames = [];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let lazyImages = [].slice.call(document.querySelectorAll("img.lazy-load"));
+
+            if ("IntersectionObserver" in window) {
+                let lazyImageObserver = new IntersectionObserver(function(entries, observer) {
+                    entries.forEach(function(entry) {
+                        if (entry.isIntersecting) {
+                            let lazyImage = entry.target;
+                            lazyImage.src = lazyImage.dataset.src;
+                            lazyImage.classList.remove("lazy-load");
+                            lazyImageObserver.unobserve(lazyImage);
+                        }
+                    });
+                });
+
+                lazyImages.forEach(function(lazyImage) {
+                    lazyImageObserver.observe(lazyImage);
+                });
+            } else {
+                lazyImages.forEach(function(lazyImage) {
+                    lazyImage.src = lazyImage.dataset.src;
+                    lazyImage.classList.remove("lazy-load");
+                });
+            }
+        });
 
         function updateRange() {
             const rangeStart = document.getElementById('rangeStart');
@@ -102,11 +195,38 @@
             if (highlightedFrames.includes(frameValue)) {
                 highlightedFrames = highlightedFrames.filter(item => item !== frameValue);
                 document.getElementById('img-' + index).classList.remove('highlighted');
+                document.getElementById('highlighted-frame-container-' + index).remove();
             } else {
                 highlightedFrames.push(frameValue);
                 document.getElementById('img-' + index).classList.add('highlighted');
+                addHighlightedFrame(index, frameValue);
             }
             document.getElementById('highlightedFrames').value = JSON.stringify(highlightedFrames);
+            toggleHighlightedSection();
+        }
+
+        function addHighlightedFrame(index, frameValue) {
+            const highlightedWrapper = document.getElementById('highlightedWrapper');
+            const frameContainer = document.createElement('div');
+            frameContainer.className = 'frame-container';
+            frameContainer.id = 'highlighted-frame-container-' + index;
+
+            const img = document.createElement('img');
+            img.src = frameValue;
+            img.className = 'img-thumbnail';
+            img.id = 'highlighted-img-' + index;
+
+            const unhighlightButton = document.createElement('button');
+            unhighlightButton.className = 'btn btn-warning btn-sm mt-2';
+            unhighlightButton.innerText = 'Unhighlight';
+            unhighlightButton.style.width = '100%';
+            unhighlightButton.onclick = function() {
+                highlightFrame(index);
+            };
+
+            frameContainer.appendChild(img);
+            frameContainer.appendChild(unhighlightButton);
+            highlightedWrapper.appendChild(frameContainer);
         }
 
         function unhighlightFrames() {
@@ -115,7 +235,21 @@
             images.forEach(img => {
                 img.classList.remove('highlighted');
             });
+            const highlightedWrapper = document.getElementById('highlightedWrapper');
+            while (highlightedWrapper.firstChild) {
+                highlightedWrapper.removeChild(highlightedWrapper.firstChild);
+            }
             document.getElementById('highlightedFrames').value = '';
+            toggleHighlightedSection();
+        }
+
+        function toggleHighlightedSection() {
+            const highlightedSection = document.getElementById('highlightedSection');
+            if (highlightedFrames.length > 0) {
+                highlightedSection.style.display = 'flex';
+            } else {
+                highlightedSection.style.display = 'none';
+            }
         }
 
         document.querySelectorAll('.highlight-btn').forEach(button => {

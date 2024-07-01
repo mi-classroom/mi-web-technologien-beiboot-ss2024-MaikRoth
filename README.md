@@ -1,4 +1,4 @@
-# How To Start App [README](https://github.com/mi-classroom/mi-web-technologien-beiboot-ss2024-MaikRoth/blob/main/ExposureClip2Image-App/README.md)
+# !! -- [Readme](https://github.com/mi-classroom/mi-web-technologien-beiboot-ss2024-MaikRoth/blob/main/ExposureClip2Image-App/README.md) How To Start App -- !!
 
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/gQyBcnrC)
 # Web Technologien // begleitendes Projekt Sommersemester 2024

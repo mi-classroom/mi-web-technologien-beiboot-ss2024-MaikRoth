@@ -8,34 +8,46 @@ import glob
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+# Initialize Flask app
 app = Flask(__name__)
+
+# Configure upload, frames, and output folders
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
 app.config['FRAMES_FOLDER'] = os.path.join(app.root_path, 'static/frames')
 app.config['OUTPUT_FOLDER'] = os.path.join(app.root_path, 'outputs')
 app.config['SERVER_NAME'] = '127.0.0.1:5000' 
 
+# Create the necessary directories if they don't exist
 for folder in [app.config['UPLOAD_FOLDER'], app.config['FRAMES_FOLDER'], app.config['OUTPUT_FOLDER']]:
     if not os.path.exists(folder):
         os.makedirs(folder)
         print(f"Created directory: {folder}")
 
+# Initialize thread pool for concurrent execution
 executor = ThreadPoolExecutor(max_workers=4)
 
 def clear_frames_directory():
+    """
+    Clear all files in the frames directory.
+    """
     files = glob.glob(os.path.join(app.config['FRAMES_FOLDER'], '*'))
     for f in files:
         os.remove(f)
     print(f"Cleared frames directory: {app.config['FRAMES_FOLDER']}")
 
 def extract_frames(video_path, start_time, end_time, fps, root_url):
+    """
+    Extract frames from the video between start_time and end_time at the specified fps.
+    """
     cap = cv2.VideoCapture(video_path)
     original_fps = cap.get(cv2.CAP_PROP_FPS)
     start_frame = int(start_time * original_fps)
     end_frame = int(end_time * original_fps)
-    frame_interval = max(1, int(original_fps / fps))  
-    current_frame = 0
+    frame_interval = max(1, int(original_fps / fps))  # Calculate frame interval
 
+    current_frame = 0
     frame_paths = []
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -43,7 +55,7 @@ def extract_frames(video_path, start_time, end_time, fps, root_url):
         if start_frame <= current_frame <= end_frame and current_frame % frame_interval == 0:
             frame_filename = f"frame_{current_frame}.jpg"
             frame_path = os.path.join(app.config['FRAMES_FOLDER'], frame_filename)
-            cv2.imwrite(frame_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 85])  
+            cv2.imwrite(frame_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 85])  # Save frame with JPEG quality of 85
             frame_url = f"{root_url}static/frames/{frame_filename}"
             frame_paths.append(frame_url)
         current_frame += 1
@@ -52,9 +64,12 @@ def extract_frames(video_path, start_time, end_time, fps, root_url):
     return frame_paths
 
 def create_long_exposure_image(selected_frames, highlighted_frames):
+    """
+    Create a long exposure image from the selected frames, optionally highlighting specific frames.
+    """
     exposure_image = None
     valid_frame_count = 0
-    exposure_factor = 1.5  
+    exposure_factor = 1.5  # Exposure factor for blending frames
 
     for frame_url in selected_frames:
         frame_path = frame_url.replace(request.url_root, '').replace('/static/', 'static/')
@@ -91,6 +106,9 @@ def create_long_exposure_image(selected_frames, highlighted_frames):
         raise ValueError("No valid frames to process.")
 
 def highlight_object(exposure_image, highlighted_img):
+    """
+    Highlight the main object in the highlighted image within the exposure image.
+    """
     back_sub = cv2.createBackgroundSubtractorMOG2(history=1, varThreshold=50, detectShadows=False)
     fg_mask = back_sub.apply(highlighted_img)
     contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -100,15 +118,18 @@ def highlight_object(exposure_image, highlighted_img):
         cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
         mask = mask[:, :, 0] / 255.0
 
-        alpha = 0.3
+        alpha = 0.3  # Transparency factor for highlighted object
         for c in range(3):
             exposure_image[:, :, c] = (1 - mask * alpha) * exposure_image[:, :, c] + mask * alpha * highlighted_img[:, :, c]
     return np.clip(exposure_image, 0, 255)
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
+    """
+    Handle file upload and frame extraction.
+    """
     if request.method == 'POST':
-        clear_frames_directory()  
+        clear_frames_directory()  # Clear the frames directory before processing
         video = request.files['video']
         start_time = float(request.form['start_time'])
         end_time = float(request.form['end_time'])
@@ -130,6 +151,9 @@ def upload_file():
 
 @app.route('/process_frames', methods=['POST'])
 def process_frames():
+    """
+    Process selected frames to create a long exposure image.
+    """
     try:
         selected_frames_json = request.form.get('selectedFrames')
         highlighted_frames_json = request.form.get('highlightedFrames')
@@ -152,5 +176,6 @@ def process_frames():
         print(f"Error: {e}")
         return f"An error occurred during processing: {e}. Please check the server logs for more details.", 500
 
+# Run the app in debug mode
 if __name__ == '__main__':
     app.run(debug=True)

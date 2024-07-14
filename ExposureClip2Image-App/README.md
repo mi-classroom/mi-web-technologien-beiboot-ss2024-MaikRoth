@@ -15,6 +15,10 @@ cd mi-web-technologien-beiboot-ss2024-MaikRoth
 cd ExposureClip2Image-App
 ````
 
+# Using Docker Compose
+
+For an easier setup, you can use Docker Compose. Follow the steps [here](#setup-using-docker-compose) to get started. First do Step 1 and Step 2 and then go on from here.
+
 
 # 3. Create and Activate a Virtual Environment (Optional but Recommended)
 
@@ -63,4 +67,21 @@ python app.py
 
 ```` bash
 http://127.0.0.1:5000
+````
+# Setup using Docker Compose
+# 3. Ensure Docker and Docker Compose are Installed
+
+- Make sure you have Docker and Docker Compose installed on your machine. You can download them from Docker's official website.
+
+# 4. Build and Run the Application using Docker Compose
+Use the following commands to build the Docker image and start the application:
+
+````bash
+docker-compose up -d
+````
+
+# 5. Access the Application in a Web Browser
+- Once the containers are running, open your web browser and navigate to:
+````bash
+http://localhost:5000
 ````

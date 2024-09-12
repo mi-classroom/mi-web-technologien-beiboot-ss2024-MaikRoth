@@ -212,11 +212,17 @@ def upload_file():
 def process_frames():
     """
     Process selected frames to create a long exposure image.
-
     Returns:
         The created long exposure image file or error message.
     """
     try:
+        global generated_preview_path
+
+        # If the preview image has already been generated, serve it directly
+        if generated_preview_path and os.path.exists(generated_preview_path):
+            logging.info(f"Serving already generated preview image: {generated_preview_path}")
+            return send_file(generated_preview_path, as_attachment=True)
+
         selected_frames_json = request.form.get('selectedFrames')
         highlighted_frames_json = request.form.get('highlightedFrames')
 
@@ -230,7 +236,8 @@ def process_frames():
         if not selected_frames:
             logging.error("No frames selected for processing.")
             return "No frames selected for processing.", 400
-        
+
+        # If not already generated, generate the long exposure image
         output_image_path = create_long_exposure_image(selected_frames, highlighted_frames)
         return send_file(output_image_path, as_attachment=True)
     except json.JSONDecodeError as e:
@@ -241,8 +248,65 @@ def process_frames():
         return f"An error occurred during processing: {e}. Please check the server logs for more details.", 500
 
 
-def generate_preview(selected_frames, highlighted_frames):
-    global progress
+
+def apply_filter(image, filter_name):
+    if filter_name == "grayscale":
+        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    elif filter_name == "sepia":
+        sepia_filter = np.array([[0.272, 0.534, 0.131],
+                                 [0.349, 0.686, 0.168],
+                                 [0.393, 0.769, 0.189]])
+        return cv2.transform(image, sepia_filter)
+    elif filter_name == "invert":
+        image_8bit = np.clip(image, 0, 255).astype(np.uint8)
+        return cv2.bitwise_not(image_8bit)
+    elif filter_name == "blur":
+        return cv2.GaussianBlur(image, (15, 15), 0)
+    elif filter_name == "sharpen":
+        kernel = np.array([[0, -1, 0],
+                           [-1, 5,-1],
+                           [0, -1, 0]])
+        return cv2.filter2D(image, -1, kernel)
+    elif filter_name == "emboss":
+        kernel = np.array([[2, 0, 0],
+                           [0, -1, 0],
+                           [0, 0, -1]])
+        return cv2.filter2D(image, -1, kernel) + 128
+    elif filter_name == "edge_detection":
+        return cv2.Canny(image.astype(np.uint8), 100, 200)
+    elif filter_name == "brightness":
+        return cv2.convertScaleAbs(image, alpha=1, beta=50)  # Increase brightness
+    elif filter_name == "contrast":
+        return cv2.convertScaleAbs(image, alpha=2.0, beta=0)  # Increase contrast
+    elif filter_name == "saturation":
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hsv_image[..., 1] = cv2.add(hsv_image[..., 1], 50)  # Increase saturation
+        return cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+    elif filter_name == "posterize":
+        image_8bit = np.clip(image, 0, 255).astype(np.uint8)
+        return cv2.convertScaleAbs(image_8bit, alpha=0.5, beta=0)  # Reduce color depth
+    elif filter_name == "solarize":
+        image_8bit = np.clip(image, 0, 255).astype(np.uint8)
+        return cv2.threshold(image_8bit, 128, 255, cv2.THRESH_BINARY_INV)[1] + image_8bit
+    elif filter_name == "hdr":
+        hdr = cv2.detailEnhance(image, sigma_s=12, sigma_r=0.15)
+        return cv2.convertScaleAbs(hdr)
+    elif filter_name == "sketch":
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        inv_gray_image = 255 - gray_image
+        blur_image = cv2.GaussianBlur(inv_gray_image, (21, 21), 0)
+        sketch_image = cv2.divide(gray_image, 255 - blur_image, scale=256)
+        return cv2.cvtColor(sketch_image, cv2.COLOR_GRAY2BGR)
+    else:
+        return image  # No filter
+
+
+
+    
+generated_preview_path = None 
+
+def generate_preview(selected_frames, highlighted_frames, filter_name="none"):
+    global progress, generated_preview_path
     exposure_image = None
     valid_frame_count = 0
     exposure_factor = 1.5  # Exposure factor for blending frames
@@ -294,8 +358,12 @@ def generate_preview(selected_frames, highlighted_frames):
                     highlighted_img = cv2.imread(highlighted_path).astype(np.float32)
                     exposure_image = highlight_object(exposure_image, highlighted_img)
 
+        # Apply the selected filter
+        exposure_image = apply_filter(exposure_image, filter_name)
+
         # Ensure the image values are within valid range
-        exposure_image = np.clip(exposure_image, 0, 255).astype(np.uint8)
+        if filter_name != "grayscale":  # Grayscale already returns a single channel image
+            exposure_image = np.clip(exposure_image, 0, 255).astype(np.uint8)
 
         # Save the generated image
         timestamp = int(time.time())
@@ -305,12 +373,16 @@ def generate_preview(selected_frames, highlighted_frames):
         os.makedirs(output_folder, exist_ok=True)
         logging.info(f"Saving preview image to: {output_path}")
 
-        cv2.imwrite(output_path, exposure_image)  # Save the generated image
+        if filter_name == "grayscale":
+            cv2.imwrite(output_path, exposure_image)  # Save grayscale image directly
+        else:
+            cv2.imwrite(output_path, exposure_image)
 
         # Check if the file was created successfully
         if not os.path.exists(output_path):
             raise FileNotFoundError(f"Failed to create the preview image at {output_path}")
 
+        generated_preview_path = output_path  # Store the path of the generated preview image
         return output_path
 
     except Exception as e:
@@ -321,7 +393,6 @@ def generate_preview(selected_frames, highlighted_frames):
 def process_preview():
     """
     Generate a preview of the long exposure image based on selected frames.
-
     Returns:
         The generated preview image or an error message.
     """
@@ -329,6 +400,7 @@ def process_preview():
         data = request.get_json()
         selected_frames = data.get('selectedFrames')
         highlighted_frames = data.get('highlightedFrames', [])
+        selected_filter = data.get('filter', 'none')  # Get selected filter
 
         if not selected_frames:
             logging.error("No frames selected for preview.")
@@ -339,7 +411,7 @@ def process_preview():
         progress = 0
 
         # Generate the long exposure image for preview
-        output_image_path = generate_preview(selected_frames, highlighted_frames)
+        output_image_path = generate_preview(selected_frames, highlighted_frames, selected_filter)
 
         # Check if file exists before sending it
         if os.path.exists(output_image_path):

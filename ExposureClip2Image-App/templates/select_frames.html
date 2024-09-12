@@ -9,6 +9,10 @@
       rel="stylesheet"
     />
     <style>
+      body {
+        background-color: #f8f9fa;
+      }
+
       .container-flex {
         display: flex;
         flex-direction: row;
@@ -21,9 +25,11 @@
         margin-bottom: 20px;
       }
       .header {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
+        font-weight: 600;
         text-align: center;
         margin: 0;
+        color: #343a40;
       }
       .frames-section {
         flex: 1;
@@ -46,22 +52,26 @@
       .scrolling-wrapper {
         display: flex;
         flex-wrap: wrap;
-        max-height: 400px;
+        max-height: 500px;
         overflow-y: auto;
         overflow-x: hidden;
-        border: 1px solid #ccc;
-        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
         width: 100%;
+        background-color: #ffffff;
       }
       .highlighted-wrapper {
         display: flex;
         flex-wrap: wrap;
-        max-height: 400px;
+        max-height: 500px;
         overflow-y: auto;
         overflow-x: hidden;
-        border: 1px solid #ccc;
-        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
         width: 100%;
+        background-color: #ffffff;
       }
       .frame-container {
         flex: 0 0 auto;
@@ -71,11 +81,12 @@
         align-items: center;
       }
       .frame-container img {
-        max-width: 150px;
-        max-height: 100px;
+        max-width: 200px;
+        max-height: 120px;
+        border-radius: 5px;
       }
       .highlighted {
-        border: 2px solid red;
+        border: 3px solid #ff5252;
       }
       .range-slider {
         width: 100%;
@@ -94,13 +105,39 @@
         margin-top: 30px;
       }
       .preview-section img {
-        max-width: 400px;
-        max-height: 300px;
-        margin-top: 15px;
+        max-width: 600px;
+        max-height: 450px;
+        margin-top: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
       }
       .loading-indicator {
         display: none;
         margin-top: 10px;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+      }
+      .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+      }
+      .btn-secondary:hover {
+        background-color: #5a6268;
+        border-color: #545b62;
+      }
+      .btn-warning {
+        background-color: #ffc107;
+        border-color: #ffc107;
+      }
+      .btn-warning:hover {
+        background-color: #e0a800;
+        border-color: #d39e00;
       }
     </style>
   </head>
@@ -193,6 +230,27 @@
             Create Long Exposure Image
           </button>
         </div>
+        <div class="form-group mt-4">
+            <label for="filterSelect">Select Filter:</label>
+            <select id="filterSelect" class="form-control">
+              <option value="none">None</option>
+              <option value="grayscale">Grayscale</option>
+              <option value="sepia">Sepia</option>
+              <option value="invert">Invert Colors</option>
+              <option value="blur">Blur</option>
+              <option value="sharpen">Sharpen</option>
+              <option value="emboss">Emboss</option>
+              <option value="edge_detection">Edge Detection</option>
+              <option value="brightness">Brightness</option>
+              <option value="contrast">Contrast</option>
+              <option value="saturation">Saturation Boost</option>
+              <option value="posterize">Posterize</option>
+              <option value="solarize">Solarize</option>
+              <option value="hdr">HDR Effect</option>
+              <option value="sketch">Sketch</option>
+            </select>
+          </div>
+          
       </form>
       <!-- Preview Section -->
       <div class="preview-section">
@@ -240,6 +298,13 @@
             lazyImage.classList.remove("lazy-load");
           });
         }
+
+        // Trigger preview update when the filter is changed
+        document
+          .getElementById("filterSelect")
+          .addEventListener("change", function () {
+            updatePreview();
+          });
       });
 
       function updateRange() {
@@ -359,6 +424,7 @@
         const highlightedFrames = JSON.parse(
           document.getElementById("highlightedFrames").value || "[]"
         );
+        const selectedFilter = document.getElementById("filterSelect").value; // Get selected filter
 
         if (selectedFrames.length > 0) {
           // Show loading indicator
@@ -373,6 +439,7 @@
             body: JSON.stringify({
               selectedFrames: selectedFrames,
               highlightedFrames: highlightedFrames,
+              filter: selectedFilter, // Include selected filter in the request
             }),
           })
             .then((response) => {

@@ -1,5 +1,5 @@
 import json
-from flask import Flask, request, render_template, send_file, url_for
+from flask import Flask, request, render_template, send_file, url_for, Response
 from werkzeug.utils import secure_filename
 import os
 import cv2
@@ -17,6 +17,12 @@ app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
 app.config['FRAMES_FOLDER'] = os.path.join(app.root_path, 'static/frames')
 app.config['OUTPUT_FOLDER'] = os.path.join(app.root_path, 'outputs')
 app.config['SERVER_NAME'] = '127.0.0.1:5000'
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# Global variable to store progress
+progress = 0
 
 # Create the necessary directories if they don't exist
 for folder in [app.config['UPLOAD_FOLDER'], app.config['FRAMES_FOLDER'], app.config['OUTPUT_FOLDER']]:
@@ -234,6 +240,128 @@ def process_frames():
         logging.error(f"Error: {e}")
         return f"An error occurred during processing: {e}. Please check the server logs for more details.", 500
 
+
+def generate_preview(selected_frames, highlighted_frames):
+    global progress
+    exposure_image = None
+    valid_frame_count = 0
+    exposure_factor = 1.5 
+
+    def convert_url_to_path(url):
+        return os.path.join(app.root_path, url.replace(request.url_root, '').replace('/static/', 'static/'))
+
+    selected_frame_paths = [convert_url_to_path(frame_url) for frame_url in selected_frames]
+    frames_to_process = selected_frame_paths  
+
+    total_frames = len(frames_to_process)
+
+    if total_frames == 0:
+        logging.error("No frames available for processing.")
+        raise ValueError("No frames available for processing.")
+
+    try:
+        for i, frame_path in enumerate(frames_to_process):
+            if not os.path.exists(frame_path):
+                logging.error(f"Frame path does not exist: {frame_path}")
+                continue
+
+            frame = cv2.imread(frame_path)
+            if frame is None:
+                logging.error(f"Failed to read frame: {frame_path}")
+                continue
+
+            frame = frame.astype(np.float32)
+
+            if exposure_image is None:
+                exposure_image = np.zeros_like(frame)
+
+            exposure_image += frame * exposure_factor
+            valid_frame_count += 1
+
+            progress = int((i + 1) / total_frames * 100)
+
+        if valid_frame_count > 0:
+            exposure_image /= valid_frame_count
+
+        if highlighted_frames:
+            for highlighted_frame in highlighted_frames:
+                highlighted_path = convert_url_to_path(highlighted_frame)
+                if os.path.exists(highlighted_path):
+                    highlighted_img = cv2.imread(highlighted_path).astype(np.float32)
+                    exposure_image = highlight_object(exposure_image, highlighted_img)
+
+        exposure_image = np.clip(exposure_image, 0, 255).astype(np.uint8)
+
+        timestamp = int(time.time())
+        output_folder = app.config['OUTPUT_FOLDER']
+        output_path = os.path.join(output_folder, f'preview_{timestamp}.jpg')
+
+        os.makedirs(output_folder, exist_ok=True)
+        logging.info(f"Saving preview image to: {output_path}")
+
+        cv2.imwrite(output_path, exposure_image) 
+        
+        if not os.path.exists(output_path):
+            raise FileNotFoundError(f"Failed to create the preview image at {output_path}")
+
+        return output_path
+
+    except Exception as e:
+        logging.error(f"Error generating preview: {e}")
+        raise
+
+@app.route('/process_preview', methods=['POST'])
+def process_preview():
+    """
+    Generate a preview of the long exposure image based on selected frames.
+
+    Returns:
+        The generated preview image or an error message.
+    """
+    try:
+        data = request.get_json()
+        selected_frames = data.get('selectedFrames')
+        highlighted_frames = data.get('highlightedFrames', [])
+
+        if not selected_frames:
+            logging.error("No frames selected for preview.")
+            return "No frames selected for preview.", 400
+
+        # Reset progress
+        global progress
+        progress = 0
+
+        # Generate the long exposure image for preview
+        output_image_path = generate_preview(selected_frames, highlighted_frames)
+
+        # Check if file exists before sending it
+        if os.path.exists(output_image_path):
+            return send_file(output_image_path, mimetype='image/jpeg')
+        else:
+            logging.error(f"File not found: {output_image_path}")
+            return "Error: Preview image could not be generated.", 500
+
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error: {e}")
+        return f"An error occurred during preview generation: {e}.", 500
+    except Exception as e:
+        logging.error(f"Error generating preview: {e}")
+        return f"An error occurred during preview generation: {e}.", 500
+
+
+@app.route('/progress')
+def progress_stream():
+    """
+    Stream the progress percentage to the client.
+    """
+    def generate():
+        global progress
+        while progress < 100:
+            time.sleep(0.5)  # Adjust the interval as needed
+            yield f"data:{progress}\n\n"
+        yield "data:100\n\n"
+
+    return Response(generate(), mimetype='text/event-stream')
 # Run the app in debug mode
 if __name__ == '__main__':
     app.run(debug=True)

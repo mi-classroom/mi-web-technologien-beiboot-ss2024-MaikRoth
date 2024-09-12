@@ -1,272 +1,416 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Frame Selection for Long Exposure Image</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <style>
-        .container-flex {
-            display: flex;
-            flex-direction: row;
-            transition: all 0.3s ease;
-        }
-        .header-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .header {
-            font-size: 1.5rem;
-            text-align: center;
-            margin: 0;
-        }
-        .frames-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-right: 10px;
-            max-width: 52%;
-        }
-        .highlighted-section {
-            flex: 1;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            max-width: 48%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            transition: all 0.3s ease;
-        }
-        .scrolling-wrapper {
-            display: flex;
-            flex-wrap: wrap;
-            max-height: 400px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            border: 1px solid #ccc;
-            padding: 10px;
-            width: 100%;
-        }
-        .highlighted-wrapper {
-            display: flex;
-            flex-wrap: wrap;
-            max-height: 400px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            border: 1px solid #ccc;
-            padding: 10px;
-            width: 100%;
-        }
-        .frame-container {
-            flex: 0 0 auto;
-            margin: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .frame-container img {
-            max-width: 150px;
-            max-height: 100px;
-        }
-        .highlighted {
-            border: 2px solid red;
-        }
-        .range-slider {
-            width: 100%;
-            margin: 15px 0;
-        }
-        .form-buttons {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-            margin-bottom: 40px;
-        }
+      .container-flex {
+        display: flex;
+        flex-direction: row;
+        transition: all 0.3s ease;
+      }
+      .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .header {
+        font-size: 1.5rem;
+        text-align: center;
+        margin: 0;
+      }
+      .frames-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-right: 10px;
+        max-width: 52%;
+      }
+      .highlighted-section {
+        flex: 1;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        max-width: 48%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        transition: all 0.3s ease;
+      }
+      .scrolling-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 100%;
+      }
+      .highlighted-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 100%;
+      }
+      .frame-container {
+        flex: 0 0 auto;
+        margin: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .frame-container img {
+        max-width: 150px;
+        max-height: 100px;
+      }
+      .highlighted {
+        border: 2px solid red;
+      }
+      .range-slider {
+        width: 100%;
+        margin: 15px 0;
+      }
+      .form-buttons {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        margin-bottom: 40px;
+      }
+      .preview-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 30px;
+      }
+      .preview-section img {
+        max-width: 400px;
+        max-height: 300px;
+        margin-top: 15px;
+      }
+      .loading-indicator {
+        display: none;
+        margin-top: 10px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container mt-5">
-        <div class="header-section">
-            <div class="header">Select Frames</div>
-            <div class="header">Highlighted Frames</div>
+      <div class="header-section">
+        <div class="header">Select Frames</div>
+        <div class="header">Highlighted Frames</div>
+      </div>
+      <form id="framesForm" action="/process_frames" method="post">
+        <div class="container-flex">
+          <div class="frames-section">
+            <div class="scrolling-wrapper" id="scrollingWrapper">
+              {% for frame in frames %}
+              <div
+                class="frame-container"
+                id="frame-container-{{ loop.index0 }}"
+              >
+                <img
+                  data-src="{{ frame }}"
+                  class="img-thumbnail lazy-load"
+                  id="img-{{ loop.index0 }}"
+                />
+                <div class="form-check">
+                  <input
+                    type="checkbox"
+                    class="form-check-input frame-checkbox"
+                    name="frames"
+                    value="{{ frame }}"
+                    id="checkbox-{{ loop.index0 }}"
+                    checked
+                  />
+                  <label
+                    class="form-check-label"
+                    for="checkbox-{{ loop.index0 }}"
+                    >Select</label
+                  >
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-warning btn-sm mt-2 highlight-btn"
+                  data-index="{{ loop.index0 }}"
+                >
+                  Highlight
+                </button>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="range-slider">
+              <label for="rangeStart">Select Range:</label>
+              <input
+                type="range"
+                id="rangeStart"
+                name="rangeStart"
+                min="0"
+                max="{{ frames|length - 1 }}"
+                value="0"
+                oninput="updateRange()"
+              />
+              <input
+                type="range"
+                id="rangeEnd"
+                name="rangeEnd"
+                min="0"
+                max="{{ frames|length - 1 }}"
+                value="{{ frames|length - 1 }}"
+                oninput="updateRange()"
+              />
+            </div>
+            <div class="selected-range">
+              <span id="rangeValueStart">0</span> -
+              <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
+            </div>
+          </div>
+          <div class="highlighted-section" id="highlightedSection">
+            <div class="highlighted-wrapper" id="highlightedWrapper"></div>
+            <button
+              type="button"
+              class="btn btn-secondary mt-4"
+              onclick="unhighlightFrames()"
+            >
+              Unhighlight All
+            </button>
+          </div>
         </div>
-        <form id="framesForm" action="/process_frames" method="post">
-            <div class="container-flex">
-                <div class="frames-section">
-                    <div class="scrolling-wrapper" id="scrollingWrapper">
-                        {% for frame in frames %}
-                            <div class="frame-container" id="frame-container-{{ loop.index0 }}">
-                                <img data-src="{{ frame }}" class="img-thumbnail lazy-load" id="img-{{ loop.index0 }}">
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input frame-checkbox" name="frames" value="{{ frame }}" id="checkbox-{{ loop.index0 }}" checked>
-                                    <label class="form-check-label" for="checkbox-{{ loop.index0 }}">Select</label>
-                                </div>
-                                <button type="button" class="btn btn-warning btn-sm mt-2 highlight-btn" data-index="{{ loop.index0 }}">Highlight</button>
-                            </div>
-                        {% endfor %}
-                    </div>
-                    <div class="range-slider">
-                        <label for="rangeStart">Select Range:</label>
-                        <input type="range" id="rangeStart" name="rangeStart" min="0" max="{{ frames|length - 1 }}" value="0" oninput="updateRange()">
-                        <input type="range" id="rangeEnd" name="rangeEnd" min="0" max="{{ frames|length - 1 }}" value="{{ frames|length - 1 }}" oninput="updateRange()">
-                    </div>
-                    <div class="selected-range">
-                        <span id="rangeValueStart">0</span> - <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
-                    </div>
-                </div>
-                <div class="highlighted-section" id="highlightedSection">
-                    <div class="highlighted-wrapper" id="highlightedWrapper"></div>
-                    <button type="button" class="btn btn-secondary mt-4" onclick="unhighlightFrames()">Unhighlight All</button>
-                </div>
-            </div>
-            <input type="hidden" name="selectedFrames" id="selectedFrames">
-            <input type="hidden" name="highlightedFrames" id="highlightedFrames">
-            <div class="form-buttons">
-                <button type="submit" class="btn btn-primary mt-4">Create Long Exposure Image</button>
-            </div>
-        </form>
+        <input type="hidden" name="selectedFrames" id="selectedFrames" />
+        <input type="hidden" name="highlightedFrames" id="highlightedFrames" />
+        <div class="form-buttons">
+          <button type="submit" class="btn btn-primary mt-4">
+            Create Long Exposure Image
+          </button>
+        </div>
+      </form>
+      <!-- Preview Section -->
+      <div class="preview-section">
+        <h3>Preview of Long Exposure Image</h3>
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+          <p>Generating preview... <span id="progressPercentage">0%</span></p>
+        </div>
+        <img id="longExposurePreview" src="" alt="Long Exposure Preview" />
+      </div>
     </div>
 
     <script>
-        let highlightedFrames = [];
+      let highlightedFrames = [];
 
-        document.addEventListener("DOMContentLoaded", function() {
-            let lazyImages = [].slice.call(document.querySelectorAll("img.lazy-load"));
+      document.addEventListener("DOMContentLoaded", function () {
+        let lazyImages = [].slice.call(
+          document.querySelectorAll("img.lazy-load")
+        );
 
-            if ("IntersectionObserver" in window) {
-                let lazyImageObserver = new IntersectionObserver(function(entries, observer) {
-                    entries.forEach(function(entry) {
-                        if (entry.isIntersecting) {
-                            let lazyImage = entry.target;
-                            lazyImage.src = lazyImage.dataset.src;
-                            lazyImage.classList.remove("lazy-load");
-                            lazyImageObserver.unobserve(lazyImage);
-                        }
-                    });
-                });
+        if ("IntersectionObserver" in window) {
+          let lazyImageObserver = new IntersectionObserver(function (
+            entries,
+            observer
+          ) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                let lazyImage = entry.target;
+                lazyImage.src = lazyImage.dataset.src;
+                lazyImage.classList.remove("lazy-load");
+                lazyImageObserver.unobserve(lazyImage);
+              }
+            });
+          });
 
-                lazyImages.forEach(function(lazyImage) {
-                    lazyImageObserver.observe(lazyImage);
-                });
-            } else {
-                lazyImages.forEach(function(lazyImage) {
-                    lazyImage.src = lazyImage.dataset.src;
-                    lazyImage.classList.remove("lazy-load");
-                });
-            }
+          lazyImages.forEach(function (lazyImage) {
+            lazyImageObserver.observe(lazyImage);
+          });
+        } else {
+          lazyImages.forEach(function (lazyImage) {
+            lazyImage.src = lazyImage.dataset.src;
+            lazyImage.classList.remove("lazy-load");
+          });
+        }
+      });
+
+      function updateRange() {
+        const rangeStart = document.getElementById("rangeStart");
+        const rangeEnd = document.getElementById("rangeEnd");
+        const startValue = parseInt(rangeStart.value);
+        const endValue = parseInt(rangeEnd.value);
+
+        document.getElementById("rangeValueStart").innerText = startValue;
+        document.getElementById("rangeValueEnd").innerText = endValue;
+
+        const checkboxes = document.getElementsByClassName("frame-checkbox");
+        for (let i = 0; i < checkboxes.length; i++) {
+          const frameContainer = document.getElementById(
+            "frame-container-" + i
+          );
+          if (i >= startValue && i <= endValue) {
+            checkboxes[i].checked = true;
+            frameContainer.style.display = "block";
+          } else {
+            checkboxes[i].checked = false;
+            frameContainer.style.display = "none";
+          }
+        }
+        updateSelectedFrames();
+        updatePreview(); // Update preview when range changes
+      }
+
+      function updateSelectedFrames() {
+        const selectedFrames = [];
+        const checkboxes = document.querySelectorAll(".frame-checkbox:checked");
+        checkboxes.forEach((checkbox) => {
+          selectedFrames.push(checkbox.value);
         });
+        document.getElementById("selectedFrames").value =
+          JSON.stringify(selectedFrames);
+      }
 
-        function updateRange() {
-            const rangeStart = document.getElementById('rangeStart');
-            const rangeEnd = document.getElementById('rangeEnd');
-            const startValue = parseInt(rangeStart.value);
-            const endValue = parseInt(rangeEnd.value);
-
-            document.getElementById('rangeValueStart').innerText = startValue;
-            document.getElementById('rangeValueEnd').innerText = endValue;
-
-            const checkboxes = document.getElementsByClassName('frame-checkbox');
-            for (let i = 0; i < checkboxes.length; i++) {
-                const frameContainer = document.getElementById('frame-container-' + i);
-                if (i >= startValue && i <= endValue) {
-                    checkboxes[i].checked = true;
-                    frameContainer.style.display = 'block';
-                } else {
-                    checkboxes[i].checked = false;
-                    frameContainer.style.display = 'none';
-                }
-            }
-            updateSelectedFrames();
+      function highlightFrame(index) {
+        const frameValue = document.getElementById("checkbox-" + index).value;
+        if (highlightedFrames.includes(frameValue)) {
+          highlightedFrames = highlightedFrames.filter(
+            (item) => item !== frameValue
+          );
+          document
+            .getElementById("img-" + index)
+            .classList.remove("highlighted");
+          document
+            .getElementById("highlighted-frame-container-" + index)
+            .remove();
+        } else {
+          highlightedFrames.push(frameValue);
+          document.getElementById("img-" + index).classList.add("highlighted");
+          addHighlightedFrame(index, frameValue);
         }
+        document.getElementById("highlightedFrames").value =
+          JSON.stringify(highlightedFrames);
+        toggleHighlightedSection();
+        updatePreview(); // Update preview when frames are highlighted or unhighlighted
+      }
 
-        function updateSelectedFrames() {
-            const selectedFrames = [];
-            const checkboxes = document.querySelectorAll('.frame-checkbox:checked');
-            checkboxes.forEach(checkbox => {
-                selectedFrames.push(checkbox.value);
-            });
-            document.getElementById('selectedFrames').value = JSON.stringify(selectedFrames);
-        }
+      function addHighlightedFrame(index, frameValue) {
+        const highlightedWrapper =
+          document.getElementById("highlightedWrapper");
+        const frameContainer = document.createElement("div");
+        frameContainer.className = "frame-container";
+        frameContainer.id = "highlighted-frame-container-" + index;
 
-        function highlightFrame(index) {
-            const frameValue = document.getElementById('checkbox-' + index).value;
-            if (highlightedFrames.includes(frameValue)) {
-                highlightedFrames = highlightedFrames.filter(item => item !== frameValue);
-                document.getElementById('img-' + index).classList.remove('highlighted');
-                document.getElementById('highlighted-frame-container-' + index).remove();
-            } else {
-                highlightedFrames.push(frameValue);
-                document.getElementById('img-' + index).classList.add('highlighted');
-                addHighlightedFrame(index, frameValue);
-            }
-            document.getElementById('highlightedFrames').value = JSON.stringify(highlightedFrames);
-            toggleHighlightedSection();
-        }
+        const img = document.createElement("img");
+        img.src = frameValue;
+        img.className = "img-thumbnail";
+        img.id = "highlighted-img-" + index;
 
-        function addHighlightedFrame(index, frameValue) {
-            const highlightedWrapper = document.getElementById('highlightedWrapper');
-            const frameContainer = document.createElement('div');
-            frameContainer.className = 'frame-container';
-            frameContainer.id = 'highlighted-frame-container-' + index;
-
-            const img = document.createElement('img');
-            img.src = frameValue;
-            img.className = 'img-thumbnail';
-            img.id = 'highlighted-img-' + index;
-
-            const unhighlightButton = document.createElement('button');
-            unhighlightButton.className = 'btn btn-warning btn-sm mt-2';
-            unhighlightButton.innerText = 'Unhighlight';
-            unhighlightButton.style.width = '100%';
-            unhighlightButton.onclick = function() {
-                highlightFrame(index);
-            };
-
-            frameContainer.appendChild(img);
-            frameContainer.appendChild(unhighlightButton);
-            highlightedWrapper.appendChild(frameContainer);
-        }
-
-        function unhighlightFrames() {
-            highlightedFrames = [];
-            const images = document.querySelectorAll('.img-thumbnail');
-            images.forEach(img => {
-                img.classList.remove('highlighted');
-            });
-            const highlightedWrapper = document.getElementById('highlightedWrapper');
-            while (highlightedWrapper.firstChild) {
-                highlightedWrapper.removeChild(highlightedWrapper.firstChild);
-            }
-            document.getElementById('highlightedFrames').value = '';
-            toggleHighlightedSection();
-        }
-
-        function toggleHighlightedSection() {
-            const highlightedSection = document.getElementById('highlightedSection');
-            if (highlightedFrames.length > 0) {
-                highlightedSection.style.display = 'flex';
-            } else {
-                highlightedSection.style.display = 'none';
-            }
-        }
-
-        document.querySelectorAll('.highlight-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const index = this.getAttribute('data-index');
-                highlightFrame(index);
-            });
-        });
-
-        document.getElementById('framesForm').onsubmit = function() {
-            updateSelectedFrames();
-            document.getElementById('highlightedFrames').value = JSON.stringify(highlightedFrames);
+        const unhighlightButton = document.createElement("button");
+        unhighlightButton.className = "btn btn-warning btn-sm mt-2";
+        unhighlightButton.innerText = "Unhighlight";
+        unhighlightButton.style.width = "100%";
+        unhighlightButton.onclick = function () {
+          highlightFrame(index);
         };
 
-        window.onload = function() {
-            updateRange();
-        };
+        frameContainer.appendChild(img);
+        frameContainer.appendChild(unhighlightButton);
+        highlightedWrapper.appendChild(frameContainer);
+      }
+
+      function unhighlightFrames() {
+        highlightedFrames = [];
+        const images = document.querySelectorAll(".img-thumbnail");
+        images.forEach((img) => {
+          img.classList.remove("highlighted");
+        });
+        const highlightedWrapper =
+          document.getElementById("highlightedWrapper");
+        while (highlightedWrapper.firstChild) {
+          highlightedWrapper.removeChild(highlightedWrapper.firstChild);
+        }
+        document.getElementById("highlightedFrames").value = "";
+        toggleHighlightedSection();
+        updatePreview(); // Update preview when all frames are unhighlighted
+      }
+
+      function toggleHighlightedSection() {
+        const highlightedSection =
+          document.getElementById("highlightedSection");
+        if (highlightedFrames.length > 0) {
+          highlightedSection.style.display = "flex";
+        } else {
+          highlightedSection.style.display = "none";
+        }
+      }
+
+      function updatePreview() {
+        const selectedFrames = JSON.parse(
+          document.getElementById("selectedFrames").value || "[]"
+        );
+        const highlightedFrames = JSON.parse(
+          document.getElementById("highlightedFrames").value || "[]"
+        );
+
+        // Always generate preview
+        document.getElementById("loadingIndicator").style.display = "block";
+        document.getElementById("longExposurePreview").style.display = "none";
+
+        fetch("/process_preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            selectedFrames: selectedFrames,
+            highlightedFrames: highlightedFrames,
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.blob();
+          })
+          .then((blob) => {
+            const previewUrl = URL.createObjectURL(blob);
+            document.getElementById("longExposurePreview").src = previewUrl;
+            document.getElementById("loadingIndicator").style.display = "none";
+            document.getElementById("longExposurePreview").style.display =
+              "block";
+          })
+          .catch((error) => {
+            console.error("Error fetching preview:", error);
+            document.getElementById("loadingIndicator").style.display = "none";
+            alert("Failed to load the preview. Please try again.");
+          });
+      }
+
+      document.querySelectorAll(".highlight-btn").forEach((button) => {
+        button.addEventListener("click", function () {
+          const index = this.getAttribute("data-index");
+          highlightFrame(index);
+        });
+      });
+
+      document.getElementById("framesForm").onsubmit = function () {
+        updateSelectedFrames();
+        document.getElementById("highlightedFrames").value =
+          JSON.stringify(highlightedFrames);
+      };
+
+      window.onload = function () {
+        updateRange();
+        updatePreview(); // Initialize the preview on load
+      };
     </script>
-</body>
+  </body>
 </html>

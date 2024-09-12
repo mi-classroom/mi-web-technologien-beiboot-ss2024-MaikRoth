@@ -360,38 +360,57 @@
           document.getElementById("highlightedFrames").value || "[]"
         );
 
-        // Always generate preview
-        document.getElementById("loadingIndicator").style.display = "block";
-        document.getElementById("longExposurePreview").style.display = "none";
+        if (selectedFrames.length > 0) {
+          // Show loading indicator
+          document.getElementById("loadingIndicator").style.display = "block";
+          document.getElementById("longExposurePreview").style.display = "none";
 
-        fetch("/process_preview", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            selectedFrames: selectedFrames,
-            highlightedFrames: highlightedFrames,
-          }),
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! Status: ${response.status}`);
+          fetch("/process_preview", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              selectedFrames: selectedFrames,
+              highlightedFrames: highlightedFrames,
+            }),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+              }
+              return response.blob();
+            })
+            .then((blob) => {
+              const previewUrl = URL.createObjectURL(blob);
+              document.getElementById("longExposurePreview").src = previewUrl;
+              // Hide loading indicator and show preview
+              document.getElementById("loadingIndicator").style.display =
+                "none";
+              document.getElementById("longExposurePreview").style.display =
+                "block";
+            })
+            .catch((error) => {
+              console.error("Error fetching preview:", error);
+              document.getElementById("loadingIndicator").style.display =
+                "none";
+              alert("Failed to load the preview. Please try again.");
+            });
+
+          // Start progress updates using SSE
+          const eventSource = new EventSource("/progress");
+          eventSource.onmessage = function (event) {
+            const progress = event.data;
+            document.getElementById(
+              "progressPercentage"
+            ).innerText = `${progress}%`;
+            if (progress >= 100) {
+              eventSource.close();
             }
-            return response.blob();
-          })
-          .then((blob) => {
-            const previewUrl = URL.createObjectURL(blob);
-            document.getElementById("longExposurePreview").src = previewUrl;
-            document.getElementById("loadingIndicator").style.display = "none";
-            document.getElementById("longExposurePreview").style.display =
-              "block";
-          })
-          .catch((error) => {
-            console.error("Error fetching preview:", error);
-            document.getElementById("loadingIndicator").style.display = "none";
-            alert("Failed to load the preview. Please try again.");
-          });
+          };
+        } else {
+          document.getElementById("longExposurePreview").src = "";
+        }
       }
 
       document.querySelectorAll(".highlight-btn").forEach((button) => {

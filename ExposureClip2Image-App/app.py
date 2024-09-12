@@ -245,13 +245,13 @@ def generate_preview(selected_frames, highlighted_frames):
     global progress
     exposure_image = None
     valid_frame_count = 0
-    exposure_factor = 1.5 
+    exposure_factor = 1.5  # Exposure factor for blending frames
 
     def convert_url_to_path(url):
         return os.path.join(app.root_path, url.replace(request.url_root, '').replace('/static/', 'static/'))
 
     selected_frame_paths = [convert_url_to_path(frame_url) for frame_url in selected_frames]
-    frames_to_process = selected_frame_paths  
+    frames_to_process = selected_frame_paths  # Always process the selected frames
 
     total_frames = len(frames_to_process)
 
@@ -275,14 +275,18 @@ def generate_preview(selected_frames, highlighted_frames):
             if exposure_image is None:
                 exposure_image = np.zeros_like(frame)
 
+            # Blend the frame with the exposure image
             exposure_image += frame * exposure_factor
             valid_frame_count += 1
 
-            progress = int((i + 1) / total_frames * 100)
+            # Update progress
+            progress = int(((i + 1) / total_frames) * 100)
 
+        # Normalize the image to avoid overexposure
         if valid_frame_count > 0:
             exposure_image /= valid_frame_count
 
+        # Process highlighted frames if any
         if highlighted_frames:
             for highlighted_frame in highlighted_frames:
                 highlighted_path = convert_url_to_path(highlighted_frame)
@@ -290,8 +294,10 @@ def generate_preview(selected_frames, highlighted_frames):
                     highlighted_img = cv2.imread(highlighted_path).astype(np.float32)
                     exposure_image = highlight_object(exposure_image, highlighted_img)
 
+        # Ensure the image values are within valid range
         exposure_image = np.clip(exposure_image, 0, 255).astype(np.uint8)
 
+        # Save the generated image
         timestamp = int(time.time())
         output_folder = app.config['OUTPUT_FOLDER']
         output_path = os.path.join(output_folder, f'preview_{timestamp}.jpg')
@@ -299,8 +305,9 @@ def generate_preview(selected_frames, highlighted_frames):
         os.makedirs(output_folder, exist_ok=True)
         logging.info(f"Saving preview image to: {output_path}")
 
-        cv2.imwrite(output_path, exposure_image) 
-        
+        cv2.imwrite(output_path, exposure_image)  # Save the generated image
+
+        # Check if the file was created successfully
         if not os.path.exists(output_path):
             raise FileNotFoundError(f"Failed to create the preview image at {output_path}")
 
@@ -357,11 +364,12 @@ def progress_stream():
     def generate():
         global progress
         while progress < 100:
-            time.sleep(0.5)  # Adjust the interval as needed
+            time.sleep(0.5) 
             yield f"data:{progress}\n\n"
         yield "data:100\n\n"
 
     return Response(generate(), mimetype='text/event-stream')
+
 # Run the app in debug mode
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,502 +1,667 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Frame Selection for Long Exposure Image</title>
-    <link
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      body {
-        background-color: #f8f9fa;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frame Selection for Long Exposure Image</title>
+  <link
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
 
-      .container-flex {
-        display: flex;
-        flex-direction: row;
-        transition: all 0.3s ease;
-      }
-      .header-section {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-      }
-      .header {
-        font-size: 1.75rem;
-        font-weight: 600;
-        text-align: center;
-        margin: 0;
-        color: #343a40;
-      }
-      .frames-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-right: 10px;
-        max-width: 52%;
-      }
-      .highlighted-section {
-        flex: 1;
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        max-width: 48%;
-        overflow-y: auto;
-        overflow-x: hidden;
-        transition: all 0.3s ease;
-      }
-      .scrolling-wrapper {
-        display: flex;
-        flex-wrap: wrap;
-        max-height: 500px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 15px;
-        width: 100%;
-        background-color: #ffffff;
-      }
-      .highlighted-wrapper {
-        display: flex;
-        flex-wrap: wrap;
-        max-height: 500px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 15px;
-        width: 100%;
-        background-color: #ffffff;
-      }
-      .frame-container {
-        flex: 0 0 auto;
-        margin: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      .frame-container img {
-        max-width: 200px;
-        max-height: 120px;
-        border-radius: 5px;
-      }
-      .highlighted {
-        border: 3px solid #ff5252;
-      }
-      .range-slider {
-        width: 100%;
-        margin: 15px 0;
-      }
-      .form-buttons {
-        display: flex;
-        justify-content: center;
-        margin-top: 20px;
-        margin-bottom: 40px;
-      }
-      .preview-section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-top: 30px;
-      }
-      .preview-section img {
-        max-width: 600px;
-        max-height: 450px;
-        margin-top: 20px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-      }
-      .loading-indicator {
-        display: none;
-        margin-top: 10px;
-      }
-      .btn-primary {
-        background-color: #007bff;
-        border-color: #007bff;
-      }
-      .btn-primary:hover {
-        background-color: #0056b3;
-        border-color: #0056b3;
-      }
-      .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-      }
-      .btn-secondary:hover {
-        background-color: #5a6268;
-        border-color: #545b62;
-      }
-      .btn-warning {
-        background-color: #ffc107;
-        border-color: #ffc107;
-      }
-      .btn-warning:hover {
-        background-color: #e0a800;
-        border-color: #d39e00;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container mt-5">
-      <div class="header-section">
-        <div class="header">Select Frames</div>
-        <div class="header">Highlighted Frames</div>
-      </div>
-      <form id="framesForm" action="/process_frames" method="post">
-        <div class="container-flex">
-          <div class="frames-section">
-            <div class="scrolling-wrapper" id="scrollingWrapper">
-              {% for frame in frames %}
-              <div
-                class="frame-container"
-                id="frame-container-{{ loop.index0 }}"
-              >
-                <img
-                  data-src="{{ frame }}"
-                  class="img-thumbnail lazy-load"
-                  id="img-{{ loop.index0 }}"
-                />
-                <div class="form-check">
-                  <input
-                    type="checkbox"
-                    class="form-check-input frame-checkbox"
-                    name="frames"
-                    value="{{ frame }}"
-                    id="checkbox-{{ loop.index0 }}"
-                    checked
-                  />
-                  <label
-                    class="form-check-label"
-                    for="checkbox-{{ loop.index0 }}"
-                    >Select</label
-                  >
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-warning btn-sm mt-2 highlight-btn"
-                  data-index="{{ loop.index0 }}"
-                >
-                  Highlight
-                </button>
-              </div>
-              {% endfor %}
-            </div>
-            <div class="range-slider">
-              <label for="rangeStart">Select Range:</label>
-              <input
-                type="range"
-                id="rangeStart"
-                name="rangeStart"
-                min="0"
-                max="{{ frames|length - 1 }}"
-                value="0"
-                oninput="updateRange()"
-              />
-              <input
-                type="range"
-                id="rangeEnd"
-                name="rangeEnd"
-                min="0"
-                max="{{ frames|length - 1 }}"
-                value="{{ frames|length - 1 }}"
-                oninput="updateRange()"
-              />
-            </div>
-            <div class="selected-range">
-              <span id="rangeValueStart">0</span> -
-              <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
-            </div>
-          </div>
-          <div class="highlighted-section" id="highlightedSection">
-            <div class="highlighted-wrapper" id="highlightedWrapper"></div>
-            <button
-              type="button"
-              class="btn btn-secondary mt-4"
-              onclick="unhighlightFrames()"
-            >
-              Unhighlight All
-            </button>
-          </div>
-        </div>
-        <input type="hidden" name="selectedFrames" id="selectedFrames" />
-        <input type="hidden" name="highlightedFrames" id="highlightedFrames" />
-        <div class="form-buttons">
-          <button type="submit" class="btn btn-primary mt-4">
-            Create Long Exposure Image
-          </button>
-        </div>
-        <div class="form-group mt-4">
-            <label for="filterSelect">Select Filter:</label>
-            <select id="filterSelect" class="form-control">
-              <option value="none">None</option>
-              <option value="grayscale">Grayscale</option>
-              <option value="sepia">Sepia</option>
-              <option value="invert">Invert Colors</option>
-              <option value="blur">Blur</option>
-              <option value="sharpen">Sharpen</option>
-              <option value="emboss">Emboss</option>
-              <option value="edge_detection">Edge Detection</option>
-              <option value="brightness">Brightness</option>
-              <option value="contrast">Contrast</option>
-              <option value="saturation">Saturation Boost</option>
-              <option value="posterize">Posterize</option>
-              <option value="solarize">Solarize</option>
-              <option value="hdr">HDR Effect</option>
-              <option value="sketch">Sketch</option>
-            </select>
-          </div>
-          
-      </form>
-      <!-- Preview Section -->
-      <div class="preview-section">
-        <h3>Preview of Long Exposure Image</h3>
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="loading-indicator text-center">
-          <div class="spinner-border text-primary" role="status">
+    .container-flex {
+      display: flex;
+      flex-direction: row;
+      transition: all 0.3s ease;
+    }
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header {
+      font-size: 1.75rem;
+      font-weight: 600;
+      text-align: center;
+      margin: 0;
+      color: #343a40;
+    }
+    .frames-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-right: 10px;
+      max-width: 52%;
+    }
+    .highlighted-section {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      max-width: 48%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: all 0.3s ease;
+    }
+    .scrolling-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      max-height: 500px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      width: 100%;
+      background-color: #ffffff;
+    }
+    .highlighted-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      max-height: 500px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      width: 100%;
+      background-color: #ffffff;
+    }
+    .frame-container {
+      flex: 0 0 auto;
+      margin: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .frame-container img {
+      max-width: 200px;
+      max-height: 120px;
+      border-radius: 5px;
+    }
+    .highlighted {
+      border: 3px solid #ff5252;
+    }
+    .range-slider {
+      width: 100%;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    .range-slider label {
+      font-weight: bold;
+    }
+    .form-buttons {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+    .preview-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 30px;
+    }
+    .preview-container {
+      position: relative;
+      display: inline-block;
+      width: 600px;
+      height: 450px;
+      background-color: #f0f0f0; 
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      overflow: hidden; 
+    }
+    .preview-container img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+    }
+    .preview-container img.hidden {
+      display: none;
+    }
+    .loading-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      text-align: center;
+    }
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    .loading-indicator.hidden,
+    .loading-overlay.hidden {
+      display: none;
+    }
+    .btn-primary {
+      background-color: #007bff;
+      border-color: #007bff;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+      border-color: #0056b3;
+    }
+    .btn-secondary {
+      background-color: #6c757d;
+      border-color: #6c757d;
+    }
+    .btn-secondary:hover {
+      background-color: #5a6268;
+      border-color: #545b62;
+    }
+    .btn-warning {
+      background-color: #ffc107;
+      border-color: #ffc107;
+    }
+    .btn-warning:hover {
+      background-color: #e0a800;
+      border-color: #d39e00;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      background: transparent;
+      margin: 10px 0;
+    }
+    input[type="range"]:focus {
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-ms-track {
+      width: 100%;
+      cursor: pointer;
+      background: transparent; 
+      border-color: transparent;
+      color: transparent;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 8px;
+      cursor: pointer;
+      background: #007bff;
+      border-radius: 5px;
+      border: 1px solid #0062cc;
+    }
+    input[type="range"]::-moz-range-track {
+      width: 100%;
+      height: 8px;
+      cursor: pointer;
+      background: #007bff;
+      border-radius: 5px;
+      border: 1px solid #0062cc;
+    }
+    input[type="range"]::-ms-track {
+      width: 100%;
+      height: 8px;
+      cursor: pointer;
+      background: transparent;
+      border-color: transparent;
+      color: transparent;
+    }
+    input[type="range"]::-ms-fill-lower {
+      background: #007bff;
+      border: 1px solid #0062cc;
+      border-radius: 5px;
+    }
+    input[type="range"]::-ms-fill-upper {
+      background: #007bff;
+      border: 1px solid #0062cc;
+      border-radius: 5px;
+    }
+    /* Slider Thumb */
+    input[type="range"]::-webkit-slider-thumb {
+      border: 1px solid #0062cc;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -6px;
+    }
+    input[type="range"]::-moz-range-thumb {
+      border: 1px solid #0062cc;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+    }
+    input[type="range"]::-ms-thumb {
+      border: 1px solid #0062cc;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #e9ecef;
+    }
+    input[type="range"]::-moz-range-thumb:hover {
+      background: #e9ecef;
+    }
+    input[type="range"]::-ms-thumb:hover {
+      background: #e9ecef;
+    }
+    input[type="range"]:active::-webkit-slider-thumb {
+      background: #dae0e5;
+    }
+    input[type="range"]:active::-moz-range-thumb {
+      background: #dae0e5;
+    }
+    input[type="range"]:active::-ms-thumb {
+      background: #dae0e5;
+    }
+    input[type="range"]:focus::-webkit-slider-thumb {
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+    }
+    input[type="range"]:focus::-moz-range-thumb {
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+    }
+    input[type="range"]:focus::-ms-thumb {
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3);
+    }
+    .selected-range {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <!-- Preview Section -->
+    <div class="preview-section">
+      <h3>Preview of Long Exposure Image</h3>
+      <div class="preview-container">
+        <img id="longExposurePreview" src="" alt="Long Exposure Preview" class="hidden" />
+        <div id="loadingOverlay" class="loading-overlay"></div>
+        <div id="loadingIndicator" class="loading-indicator">
+          <div class="spinner-border text-light" role="status">
             <span class="sr-only">Loading...</span>
           </div>
           <p>Generating preview... <span id="progressPercentage">0%</span></p>
         </div>
-        <img id="longExposurePreview" src="" alt="Long Exposure Preview" />
       </div>
     </div>
+    <!-- Filter Selection -->
+    <div class="form-group mt-4">
+      <label for="filterSelect">Select Filter:</label>
+      <select id="filterSelect" class="form-control">
+        <option value="none">None</option>
+        <option value="grayscale">Grayscale</option>
+        <option value="sepia">Sepia</option>
+        <option value="invert">Invert Colors</option>
+        <option value="blur">Blur</option>
+        <option value="sharpen">Sharpen</option>
+        <option value="emboss">Emboss</option>
+        <option value="edge_detection">Edge Detection</option>
+        <option value="brightness">Brightness</option>
+        <option value="contrast">Contrast</option>
+        <option value="saturation">Saturation Boost</option>
+        <option value="posterize">Posterize</option>
+        <option value="solarize">Solarize</option>
+        <option value="hdr">HDR Effect</option>
+        <option value="sketch">Sketch</option>
+      </select>
+    </div>
+    <!-- Form and Frame Selection Below Preview -->
+    <form id="framesForm" action="/process_frames" method="post" onsubmit="return submitForm()">
+      <div class="form-buttons">
+        <button type="submit" class="btn btn-primary mt-4">
+          Download Long Exposure Image
+        </button>
+      </div>
+      <div class="header-section">
+        <div class="header">Select Frames</div>
+        <div class="header">Highlighted Frames</div>
+      </div>
+      <div class="container-flex">
+        <div class="frames-section">
+          <div class="scrolling-wrapper" id="scrollingWrapper">
+            {% for frame in frames %}
+            <div
+              class="frame-container"
+              id="frame-container-{{ loop.index0 }}"
+            >
+              <img
+                data-src="{{ frame }}"
+                class="img-thumbnail lazy-load"
+                id="img-{{ loop.index0 }}"
+              />
+              <div class="form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input frame-checkbox"
+                  name="frames"
+                  value="{{ frame }}"
+                  id="checkbox-{{ loop.index0 }}"
+                  checked
+                />
+                <label
+                  class="form-check-label"
+                  for="checkbox-{{ loop.index0 }}"
+                  >Select</label
+                >
+              </div>
+              <button
+                type="button"
+                class="btn btn-warning btn-sm mt-2 highlight-btn"
+                data-index="{{ loop.index0 }}"
+              >
+                Highlight
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="range-slider">
+            <label for="rangeStart">Select Frame Range:</label>
+            <div class="selected-range">
+              <span id="rangeValueStart">0</span> -
+              <span id="rangeValueEnd">{{ frames|length - 1 }}</span>
+            </div>
+            <input
+              type="range"
+              id="rangeStart"
+              name="rangeStart"
+              min="0"
+              max="{{ frames|length - 1 }}"
+              value="0"
+              oninput="updateRange()"
+            />
+            <input
+              type="range"
+              id="rangeEnd"
+              name="rangeEnd"
+              min="0"
+              max="{{ frames|length - 1 }}"
+              value="{{ frames|length - 1 }}"
+              oninput="updateRange()"
+            />
+          </div>
+        </div>
+        <div class="highlighted-section" id="highlightedSection">
+          <div class="highlighted-wrapper" id="highlightedWrapper"></div>
+          <button
+            type="button"
+            class="btn btn-secondary mt-4"
+            onclick="unhighlightFrames()"
+          >
+            Unhighlight All
+          </button>
+        </div>
+      </div>
+      <input type="hidden" name="selectedFrames" id="selectedFrames" />
+      <input type="hidden" name="highlightedFrames" id="highlightedFrames" />
+    </form>
+  </div>
 
-    <script>
-      let highlightedFrames = [];
+  <script>
+    let highlightedFrames = [];
 
-      document.addEventListener("DOMContentLoaded", function () {
-        let lazyImages = [].slice.call(
-          document.querySelectorAll("img.lazy-load")
-        );
+    document.addEventListener("DOMContentLoaded", function () {
+      let lazyImages = [].slice.call(
+        document.querySelectorAll("img.lazy-load")
+      );
 
-        if ("IntersectionObserver" in window) {
-          let lazyImageObserver = new IntersectionObserver(function (
-            entries,
-            observer
-          ) {
-            entries.forEach(function (entry) {
-              if (entry.isIntersecting) {
-                let lazyImage = entry.target;
-                lazyImage.src = lazyImage.dataset.src;
-                lazyImage.classList.remove("lazy-load");
-                lazyImageObserver.unobserve(lazyImage);
-              }
-            });
-          });
-
-          lazyImages.forEach(function (lazyImage) {
-            lazyImageObserver.observe(lazyImage);
-          });
-        } else {
-          lazyImages.forEach(function (lazyImage) {
-            lazyImage.src = lazyImage.dataset.src;
-            lazyImage.classList.remove("lazy-load");
-          });
-        }
-
-        // Trigger preview update when the filter is changed
-        document
-          .getElementById("filterSelect")
-          .addEventListener("change", function () {
-            updatePreview();
-          });
-      });
-
-      function updateRange() {
-        const rangeStart = document.getElementById("rangeStart");
-        const rangeEnd = document.getElementById("rangeEnd");
-        const startValue = parseInt(rangeStart.value);
-        const endValue = parseInt(rangeEnd.value);
-
-        document.getElementById("rangeValueStart").innerText = startValue;
-        document.getElementById("rangeValueEnd").innerText = endValue;
-
-        const checkboxes = document.getElementsByClassName("frame-checkbox");
-        for (let i = 0; i < checkboxes.length; i++) {
-          const frameContainer = document.getElementById(
-            "frame-container-" + i
-          );
-          if (i >= startValue && i <= endValue) {
-            checkboxes[i].checked = true;
-            frameContainer.style.display = "block";
-          } else {
-            checkboxes[i].checked = false;
-            frameContainer.style.display = "none";
-          }
-        }
-        updateSelectedFrames();
-        updatePreview(); // Update preview when range changes
-      }
-
-      function updateSelectedFrames() {
-        const selectedFrames = [];
-        const checkboxes = document.querySelectorAll(".frame-checkbox:checked");
-        checkboxes.forEach((checkbox) => {
-          selectedFrames.push(checkbox.value);
-        });
-        document.getElementById("selectedFrames").value =
-          JSON.stringify(selectedFrames);
-      }
-
-      function highlightFrame(index) {
-        const frameValue = document.getElementById("checkbox-" + index).value;
-        if (highlightedFrames.includes(frameValue)) {
-          highlightedFrames = highlightedFrames.filter(
-            (item) => item !== frameValue
-          );
-          document
-            .getElementById("img-" + index)
-            .classList.remove("highlighted");
-          document
-            .getElementById("highlighted-frame-container-" + index)
-            .remove();
-        } else {
-          highlightedFrames.push(frameValue);
-          document.getElementById("img-" + index).classList.add("highlighted");
-          addHighlightedFrame(index, frameValue);
-        }
-        document.getElementById("highlightedFrames").value =
-          JSON.stringify(highlightedFrames);
-        toggleHighlightedSection();
-        updatePreview(); // Update preview when frames are highlighted or unhighlighted
-      }
-
-      function addHighlightedFrame(index, frameValue) {
-        const highlightedWrapper =
-          document.getElementById("highlightedWrapper");
-        const frameContainer = document.createElement("div");
-        frameContainer.className = "frame-container";
-        frameContainer.id = "highlighted-frame-container-" + index;
-
-        const img = document.createElement("img");
-        img.src = frameValue;
-        img.className = "img-thumbnail";
-        img.id = "highlighted-img-" + index;
-
-        const unhighlightButton = document.createElement("button");
-        unhighlightButton.className = "btn btn-warning btn-sm mt-2";
-        unhighlightButton.innerText = "Unhighlight";
-        unhighlightButton.style.width = "100%";
-        unhighlightButton.onclick = function () {
-          highlightFrame(index);
-        };
-
-        frameContainer.appendChild(img);
-        frameContainer.appendChild(unhighlightButton);
-        highlightedWrapper.appendChild(frameContainer);
-      }
-
-      function unhighlightFrames() {
-        highlightedFrames = [];
-        const images = document.querySelectorAll(".img-thumbnail");
-        images.forEach((img) => {
-          img.classList.remove("highlighted");
-        });
-        const highlightedWrapper =
-          document.getElementById("highlightedWrapper");
-        while (highlightedWrapper.firstChild) {
-          highlightedWrapper.removeChild(highlightedWrapper.firstChild);
-        }
-        document.getElementById("highlightedFrames").value = "";
-        toggleHighlightedSection();
-        updatePreview(); // Update preview when all frames are unhighlighted
-      }
-
-      function toggleHighlightedSection() {
-        const highlightedSection =
-          document.getElementById("highlightedSection");
-        if (highlightedFrames.length > 0) {
-          highlightedSection.style.display = "flex";
-        } else {
-          highlightedSection.style.display = "none";
-        }
-      }
-
-      function updatePreview() {
-        const selectedFrames = JSON.parse(
-          document.getElementById("selectedFrames").value || "[]"
-        );
-        const highlightedFrames = JSON.parse(
-          document.getElementById("highlightedFrames").value || "[]"
-        );
-        const selectedFilter = document.getElementById("filterSelect").value; // Get selected filter
-
-        if (selectedFrames.length > 0) {
-          // Show loading indicator
-          document.getElementById("loadingIndicator").style.display = "block";
-          document.getElementById("longExposurePreview").style.display = "none";
-
-          fetch("/process_preview", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              selectedFrames: selectedFrames,
-              highlightedFrames: highlightedFrames,
-              filter: selectedFilter, // Include selected filter in the request
-            }),
-          })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-              }
-              return response.blob();
-            })
-            .then((blob) => {
-              const previewUrl = URL.createObjectURL(blob);
-              document.getElementById("longExposurePreview").src = previewUrl;
-              // Hide loading indicator and show preview
-              document.getElementById("loadingIndicator").style.display =
-                "none";
-              document.getElementById("longExposurePreview").style.display =
-                "block";
-            })
-            .catch((error) => {
-              console.error("Error fetching preview:", error);
-              document.getElementById("loadingIndicator").style.display =
-                "none";
-              alert("Failed to load the preview. Please try again.");
-            });
-
-          // Start progress updates using SSE
-          const eventSource = new EventSource("/progress");
-          eventSource.onmessage = function (event) {
-            const progress = event.data;
-            document.getElementById(
-              "progressPercentage"
-            ).innerText = `${progress}%`;
-            if (progress >= 100) {
-              eventSource.close();
+      if ("IntersectionObserver" in window) {
+        let lazyImageObserver = new IntersectionObserver(function (
+          entries,
+          observer
+        ) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              let lazyImage = entry.target;
+              lazyImage.src = lazyImage.dataset.src;
+              lazyImage.classList.remove("lazy-load");
+              lazyImageObserver.unobserve(lazyImage);
             }
-          };
-        } else {
-          document.getElementById("longExposurePreview").src = "";
-        }
+          });
+        });
+
+        lazyImages.forEach(function (lazyImage) {
+          lazyImageObserver.observe(lazyImage);
+        });
+      } else {
+        lazyImages.forEach(function (lazyImage) {
+          lazyImage.src = lazyImage.dataset.src;
+          lazyImage.classList.remove("lazy-load");
+        });
+      }
+      document
+        .getElementById("filterSelect")
+        .addEventListener("change", function () {
+          updatePreview();
+        });
+
+      updatePreview();
+    });
+
+    function updateRange() {
+      const rangeStart = document.getElementById("rangeStart");
+      const rangeEnd = document.getElementById("rangeEnd");
+      let startValue = parseInt(rangeStart.value);
+      let endValue = parseInt(rangeEnd.value);
+
+      if (startValue > endValue) {
+        [startValue, endValue] = [endValue, startValue];
+        rangeStart.value = startValue;
+        rangeEnd.value = endValue;
       }
 
-      document.querySelectorAll(".highlight-btn").forEach((button) => {
-        button.addEventListener("click", function () {
-          const index = this.getAttribute("data-index");
-          highlightFrame(index);
-        });
+      document.getElementById("rangeValueStart").innerText = startValue;
+      document.getElementById("rangeValueEnd").innerText = endValue;
+
+      const checkboxes = document.getElementsByClassName("frame-checkbox");
+      for (let i = 0; i < checkboxes.length; i++) {
+        const frameContainer = document.getElementById(
+          "frame-container-" + i
+        );
+        if (i >= startValue && i <= endValue) {
+          checkboxes[i].checked = true;
+          frameContainer.style.display = "block";
+        } else {
+          checkboxes[i].checked = false;
+          frameContainer.style.display = "none";
+        }
+      }
+      updateSelectedFrames();
+      updatePreview(); 
+    }
+
+    function updateSelectedFrames() {
+      const selectedFrames = [];
+      const checkboxes = document.querySelectorAll(".frame-checkbox:checked");
+      checkboxes.forEach((checkbox) => {
+        selectedFrames.push(checkbox.value);
       });
+      document.getElementById("selectedFrames").value =
+        JSON.stringify(selectedFrames);
+    }
 
-      document.getElementById("framesForm").onsubmit = function () {
-        updateSelectedFrames();
-        document.getElementById("highlightedFrames").value =
-          JSON.stringify(highlightedFrames);
+    function highlightFrame(index) {
+      const frameValue = document.getElementById("checkbox-" + index).value;
+      if (highlightedFrames.includes(frameValue)) {
+        highlightedFrames = highlightedFrames.filter(
+          (item) => item !== frameValue
+        );
+        document
+          .getElementById("img-" + index)
+          .classList.remove("highlighted");
+        const highlightedFrameContainer = document.getElementById(
+          "highlighted-frame-container-" + index
+        );
+        if (highlightedFrameContainer) {
+          highlightedFrameContainer.remove();
+        }
+      } else {
+        highlightedFrames.push(frameValue);
+        document.getElementById("img-" + index).classList.add("highlighted");
+        addHighlightedFrame(index, frameValue);
+      }
+      document.getElementById("highlightedFrames").value =
+        JSON.stringify(highlightedFrames);
+      toggleHighlightedSection();
+      updatePreview();
+    }
+
+    function addHighlightedFrame(index, frameValue) {
+      const highlightedWrapper =
+        document.getElementById("highlightedWrapper");
+      const frameContainer = document.createElement("div");
+      frameContainer.className = "frame-container";
+      frameContainer.id = "highlighted-frame-container-" + index;
+
+      const img = document.createElement("img");
+      img.src = frameValue;
+      img.className = "img-thumbnail";
+      img.id = "highlighted-img-" + index;
+
+      const unhighlightButton = document.createElement("button");
+      unhighlightButton.className = "btn btn-warning btn-sm mt-2";
+      unhighlightButton.innerText = "Unhighlight";
+      unhighlightButton.style.width = "100%";
+      unhighlightButton.onclick = function () {
+        highlightFrame(index);
       };
 
-      window.onload = function () {
-        updateRange();
-        updatePreview(); // Initialize the preview on load
-      };
-    </script>
-  </body>
+      frameContainer.appendChild(img);
+      frameContainer.appendChild(unhighlightButton);
+      highlightedWrapper.appendChild(frameContainer);
+    }
+
+    function unhighlightFrames() {
+      highlightedFrames = [];
+      const images = document.querySelectorAll(".img-thumbnail");
+      images.forEach((img) => {
+        img.classList.remove("highlighted");
+      });
+      const highlightedWrapper =
+        document.getElementById("highlightedWrapper");
+      while (highlightedWrapper.firstChild) {
+        highlightedWrapper.removeChild(highlightedWrapper.firstChild);
+      }
+      document.getElementById("highlightedFrames").value = "";
+      toggleHighlightedSection();
+      updatePreview(); 
+    }
+
+    function toggleHighlightedSection() {
+      const highlightedSection =
+        document.getElementById("highlightedSection");
+      if (highlightedFrames.length > 0) {
+        highlightedSection.style.display = "flex";
+      } else {
+        highlightedSection.style.display = "none";
+      }
+    }
+
+    function updatePreview() {
+      updateSelectedFrames(); 
+      const selectedFrames = JSON.parse(
+        document.getElementById("selectedFrames").value || "[]"
+      );
+      const highlightedFrames = JSON.parse(
+        document.getElementById("highlightedFrames").value || "[]"
+      );
+      const selectedFilter = document.getElementById("filterSelect").value; 
+
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const previewImage = document.getElementById("longExposurePreview");
+
+      if (selectedFrames.length > 0) {
+        loadingIndicator.classList.remove("hidden");
+        loadingOverlay.classList.remove("hidden");
+        previewImage.classList.add("hidden");
+
+        fetch("/process_preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            selectedFrames: selectedFrames,
+            highlightedFrames: highlightedFrames,
+            filter: selectedFilter, 
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.blob();
+          })
+          .then((blob) => {
+            const previewUrl = URL.createObjectURL(blob);
+            previewImage.src = previewUrl;
+
+            previewImage.onload = function () {
+              loadingIndicator.classList.add("hidden");
+              loadingOverlay.classList.add("hidden");
+              previewImage.classList.remove("hidden");
+            };
+          })
+          .catch((error) => {
+            console.error("Error fetching preview:", error);
+            loadingIndicator.classList.add("hidden");
+            loadingOverlay.classList.add("hidden");
+            alert("Failed to load the preview. Please try again.");
+          });
+
+        const eventSource = new EventSource("/progress");
+        eventSource.onmessage = function (event) {
+          const progress = event.data;
+          document.getElementById(
+            "progressPercentage"
+          ).innerText = `${progress}%`;
+          if (progress >= 100) {
+            eventSource.close();
+          }
+        };
+      } else {
+        previewImage.src = "";
+        previewImage.classList.add("hidden");
+        loadingIndicator.classList.add("hidden");
+        loadingOverlay.classList.add("hidden");
+      }
+    }
+
+    document.querySelectorAll(".highlight-btn").forEach((button) => {
+      button.addEventListener("click", function () {
+        const index = this.getAttribute("data-index");
+        highlightFrame(index);
+      });
+    });
+
+    function submitForm() {
+      updateSelectedFrames();
+      document.getElementById("highlightedFrames").value =
+        JSON.stringify(highlightedFrames);
+      return true; 
+    }
+
+    window.onload = function () {
+      updateRange();
+    };
+  </script>
+</body>
 </html>

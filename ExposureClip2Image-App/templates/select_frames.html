@@ -429,14 +429,14 @@
     <script>
       let highlightedFrames = [];
 
-      document.addEventListener("DOMContentLoaded", function () {
+      document.addEventListener("DOMContentLoaded", async function () {
         document
           .getElementById("filterSelect")
-          .addEventListener("change", function () {
-            updatePreview();
+          .addEventListener("change", async function () {
+            await updatePreview();
           });
 
-        updatePreview();
+        await updatePreview();
       });
       function updateFilterValue() {
         // Update the hidden input with the selected filter value
@@ -481,7 +481,7 @@
         return true;
       }
 
-      function updateRange() {
+      async function updateRange() {
         const rangeStart = document.getElementById("rangeStart");
         const rangeEnd = document.getElementById("rangeEnd");
         let startValue = parseInt(rangeStart.value);
@@ -510,7 +510,7 @@
           }
         }
         updateSelectedFrames();
-        updatePreview();
+        await updatePreview();
       }
 
       function updateSelectedFrames() {
@@ -523,7 +523,7 @@
           JSON.stringify(selectedFrames);
       }
 
-      function highlightFrame(index) {
+      async function highlightFrame(index) {
         const frameValue = document.getElementById("checkbox-" + index).value;
         if (highlightedFrames.includes(frameValue)) {
           highlightedFrames = highlightedFrames.filter(
@@ -546,7 +546,7 @@
         document.getElementById("highlightedFrames").value =
           JSON.stringify(highlightedFrames);
         toggleHighlightedSection();
-        updatePreview();
+        await updatePreview();
       }
 
       function addHighlightedFrame(index, frameValue) {
@@ -574,7 +574,7 @@
         highlightedWrapper.appendChild(frameContainer);
       }
 
-      function unhighlightFrames() {
+      async function unhighlightFrames() {
         highlightedFrames = [];
         const images = document.querySelectorAll(".img-thumbnail");
         images.forEach((img) => {
@@ -587,7 +587,7 @@
         }
         document.getElementById("highlightedFrames").value = "";
         toggleHighlightedSection();
-        updatePreview();
+        await updatePreview();
       }
 
       function toggleHighlightedSection() {
@@ -600,7 +600,7 @@
         }
       }
 
-      function updatePreview() {
+      async function updatePreview() {
         updateSelectedFrames();
         const selectedFrames = JSON.parse(
           document.getElementById("selectedFrames").value || "[]"

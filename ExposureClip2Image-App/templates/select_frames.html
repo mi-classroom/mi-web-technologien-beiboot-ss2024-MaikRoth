@@ -354,8 +354,9 @@
                 id="frame-container-{{ loop.index0 }}"
               >
                 <img
-                  data-src="{{ frame }}"
-                  class="img-thumbnail lazy-load"
+                  src="{{ frame }}"
+                  loading="lazy"
+                  class="img-thumbnail"
                   id="img-{{ loop.index0 }}"
                 />
                 <div class="form-check">
@@ -429,34 +430,6 @@
       let highlightedFrames = [];
 
       document.addEventListener("DOMContentLoaded", function () {
-        let lazyImages = [].slice.call(
-          document.querySelectorAll("img.lazy-load")
-        );
-
-        if ("IntersectionObserver" in window) {
-          let lazyImageObserver = new IntersectionObserver(function (
-            entries,
-            observer
-          ) {
-            entries.forEach(function (entry) {
-              if (entry.isIntersecting) {
-                let lazyImage = entry.target;
-                lazyImage.src = lazyImage.dataset.src;
-                lazyImage.classList.remove("lazy-load");
-                lazyImageObserver.unobserve(lazyImage);
-              }
-            });
-          });
-
-          lazyImages.forEach(function (lazyImage) {
-            lazyImageObserver.observe(lazyImage);
-          });
-        } else {
-          lazyImages.forEach(function (lazyImage) {
-            lazyImage.src = lazyImage.dataset.src;
-            lazyImage.classList.remove("lazy-load");
-          });
-        }
         document
           .getElementById("filterSelect")
           .addEventListener("change", function () {

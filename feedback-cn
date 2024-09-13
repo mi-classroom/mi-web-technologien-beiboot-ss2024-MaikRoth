@@ -1,0 +1,12 @@
+# Feedback
+## 11.06.2024
+
+- GH Startseite bitte Releases und Packages ausblenden. Falls es eine deployte Version gibt bitte verlinken.
+- Bislang alles auf dem Main Branch
+- Folder backend lässt vermuten, dass es auch ein Frontend gibt. Aber wo?
+- ADRs gut, aber noch sehr wenige.
+- Wie weit sind Sie?
+- Commit Messages könnten aussagekräfter sein
+- Wie kann ich das lokal ausführen?
+- Bitte folgenden Leitfaden beachten: https://cnoss.github.io/thesis/notes-on-code.html
+

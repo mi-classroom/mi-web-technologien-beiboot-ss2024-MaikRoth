@@ -41,19 +41,10 @@ venv\Scripts\activate
 - Use pip to install the necessary Python libraries.
   
 ```` bash
-pip install Flask werkzeug opencv-python numpy
+pip install -r requirements.txt
 ````
 
-# 5. Create Necessary Directories
- 
-- Ensure the required directories for uploads, frames, and outputs exist.
-
-```` bash
-# Create directories if they don't exist
-mkdir -p static/uploads static/frames outputs
-````
-
-# 6. Run the Flask Application
+# 5. Run the Flask Application
 
 - Execute the Flask application by running the following command:
 
@@ -61,7 +52,7 @@ mkdir -p static/uploads static/frames outputs
 python app.py
 ````
 
-# 7. Access the Application in a Web Browser
+# 6. Access the Application in a Web Browser
 
 - Once the server is running, open your web browser and navigate to:
 

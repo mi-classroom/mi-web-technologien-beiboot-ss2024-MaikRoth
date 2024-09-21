@@ -5,44 +5,100 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video to Long Exposure Image</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Custom styles for the page */
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #343a40;
+        }
+        .form-group label {
+            font-weight: bold;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            visibility: hidden;
+            color: #ffffff;
+            font-size: 1.5rem;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #28a745;
+            height: 1rem;
+        }
+        .progress-container {
+            width: 80%;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Upload Video</h1>
-        <form action="/" method="post" enctype="multipart/form-data">
+        <h1 class="mb-4 text-center">Upload a Video to create a Long-Exposure-Image</h1>
+        <form id="uploadForm" action="/" method="post" enctype="multipart/form-data" onsubmit="return showLoading()">
             <div class="form-group">
                 <label for="video">Select video:</label>
                 <input type="file" class="form-control-file" name="video" id="video" accept="video/*" required>
             </div>
-            <div class="form-group">
-                <label for="start_time">Start time (seconds):</label>
-                <input type="number" class="form-control" step="0.1" name="start_time" id="start_time" value="0" required>
-            </div>
-            <div class="form-group">
-                <label for="end_time">End time (seconds):</label>
-                <input type="number" class="form-control" step="0.1" name="end_time" id="end_time" required>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="start_time">Start time (seconds):</label>
+                    <input type="number" class="form-control" step="0.1" name="start_time" id="start_time" value="0" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="end_time">End time (seconds):</label>
+                    <input type="number" class="form-control" step="0.1" name="end_time" id="end_time" required>
+                </div>
             </div>
             <div class="form-group">
                 <label for="fps">Frames per second:</label>
                 <input type="number" class="form-control" step="0.1" name="fps" id="fps" value="30" required>
             </div>
-            <button type="submit" class="btn btn-primary">Upload and Extract Frames</button>
+            <button type="submit" class="btn btn-primary btn-block">Upload and Extract Frames</button>
         </form>
 
-        <h2 class="mt-5">Preview Video</h2>
+        <h2 class="mt-5 text-center">Preview Video</h2>
         <video id="videoPreview" controls class="w-100 mt-2"></video>
-        <br>
-        <div class="mt-3">
+        <div class="mt-3 text-center">
             <button class="btn btn-secondary" onclick="setStartTime()">Set Start Time</button>
             <button class="btn btn-secondary" onclick="setEndTime()">Set End Time</button>
         </div>
     </div>
 
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+
     <script>
-        const videoInput = document.getElementById('video');
+       const videoInput = document.getElementById('video');
         const videoPreview = document.getElementById('videoPreview');
         const startTimeInput = document.getElementById('start_time');
         const endTimeInput = document.getElementById('end_time');
+        const loadingOverlay = document.getElementById('loadingOverlay');
 
         videoInput.addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -57,6 +113,12 @@
         function setEndTime() {
             endTimeInput.value = videoPreview.currentTime;
         }
+
+        function showLoading() {
+            loadingOverlay.style.visibility = 'visible';
+            return true; // Ensure the form submission proceeds
+        }
+        
     </script>
 </body>
 </html>
